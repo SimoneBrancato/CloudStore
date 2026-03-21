@@ -5,18 +5,16 @@ import subprocess
 from datetime import datetime
 from pathlib import Path
 
-
 BRIDGE_MAIN_CLASS = "com.cloudstore.service.facade.CloudStoreFacadeBridge"
 
 class CloudStoreDB:
-    def __init__(self):
+    def __init__(self, token=None):
         default_java_cmd = self._detect_default_java_cmd()
         self.java_cmd = os.getenv(
             "FACADE_JAVA_CMD",
             default_java_cmd,
         )
-        self.auth_nickname = None
-        self.auth_password = None
+        self.token = token
 
     def _detect_default_java_cmd(self):
         docker_classes = Path("/app/target/classes")
@@ -76,26 +74,20 @@ class CloudStoreDB:
             return {"ok": 1}
         raise RuntimeError("Direct queries are disabled: use the RemoteFacade")
 
-    def set_auth_context(self, nickname, password):
-        self.auth_nickname = nickname
-        self.auth_password = password
-
-    def _call_admin_facade(self, command, data=None):
-        if not self.auth_nickname or not self.auth_password:
-            raise RuntimeError("Admin authentication context not set")
+    def _call_authenticated_facade(self, command, data=None):
+        if not self.token:
+            raise RuntimeError("Authentication required: missing token")
         payload = json.dumps(
             {
-                "auth": {"nickname": self.auth_nickname, "password": self.auth_password},
+                "token": self.token,
                 "data": {} if data is None else data,
             }
         )
         return self._call_facade(command, payload)
 
-    def list_permissions(self):
-        return self._call_admin_facade("list_permissions")
-
-    def save_permission(self, category):
-        return self._call_admin_facade("save_permission", {"id": 0, "category": category})
+    def authenticate_user(self, nickname, password):
+        payload = json.dumps({"nickname": nickname, "password": password})
+        return self._call_facade("authenticate_user", payload)
 
     def list_products(self):
         return self._call_facade("list_products")
@@ -117,10 +109,10 @@ class CloudStoreDB:
             "price": float(price),
             "stock": int(stock),
         }
-        return self._call_admin_facade("save_product", payload)
+        return self._call_authenticated_facade("save_product", payload)
 
     def delete_product(self, product_id):
-        return self._call_admin_facade("delete_product", {"productId": int(product_id)})
+        return self._call_authenticated_facade("delete_product", {"productId": int(product_id)})
 
     def update_product_stock(self, product_id, new_stock):
         products = self.list_products()
@@ -134,13 +126,13 @@ class CloudStoreDB:
             "price": float(target["price"]),
             "stock": int(new_stock),
         }
-        return self._call_admin_facade("save_product", payload)
+        return self._call_authenticated_facade("save_product", payload)
 
     def low_stock_products(self, threshold):
-        return self._call_admin_facade("low_stock", {"threshold": int(threshold)})
+        return self._call_authenticated_facade("low_stock", {"threshold": int(threshold)})
 
     def list_users(self):
-        return self._call_admin_facade("list_users")
+        return self._call_authenticated_facade("list_users")
 
     def register_user(self, nickname, name, surname, email, password, permission_id):
         payload = {
@@ -151,12 +143,7 @@ class CloudStoreDB:
             "password": password,
             "permission": {"id": int(permission_id)},
         }
-
-        return self._call_admin_facade("register_user", payload)
-
-    def authenticate_user(self, nickname, password):
-        payload = json.dumps({"nickname": nickname, "password": password})
-        return self._call_facade("authenticate_user", payload)
+        return self._call_authenticated_facade("register_user", payload)
 
     def get_customer_checkout_context(self, customer_name, items=None):
         normalized_items = []
@@ -166,14 +153,36 @@ class CloudStoreDB:
             if product_id > 0 and quantity > 0:
                 normalized_items.append({"productId": product_id, "quantity": quantity})
 
-        payload = json.dumps({"customerName": customer_name, "items": normalized_items})
-        return self._call_facade("get_customer_checkout_context", payload)
+        data = {"customerName": customer_name, "items": normalized_items}
+        return self._call_authenticated_facade("get_customer_checkout_context", data)
+
+    def process_cart_order(self, customer_name, payment_method, city, items):
+        normalized_items = []
+        for item in items:
+            product_id = int(item.get("product_id", 0))
+            quantity = int(item.get("quantity", 0))
+            if product_id > 0 and quantity > 0:
+                normalized_items.append({"productId": product_id, "quantity": quantity})
+
+        data = {
+            "customerName": customer_name,
+            "paymentMethod": payment_method,
+            "city": city,
+            "items": normalized_items,
+        }
+        return self._call_authenticated_facade("process_cart", data)
+
+    def list_permissions(self):
+        return self._call_authenticated_facade("list_permissions")
+
+    def save_permission(self, category):
+        return self._call_authenticated_facade("save_permission", {"id": 0, "category": category})
 
     def list_transactions(self, limit=50):
-        return self._call_admin_facade("list_transactions", {"limit": int(limit)})
+        return self._call_authenticated_facade("list_transactions", {"limit": int(limit)})
 
     def dashboard_stats(self):
-        raw = self._call_admin_facade("dashboard_stats")
+        raw = self._call_authenticated_facade("dashboard_stats")
         return {
             "total_products": raw.get("total_products", raw.get("totalProducts", 0)),
             "total_users": raw.get("total_users", raw.get("totalUsers", 0)),
@@ -185,7 +194,7 @@ class CloudStoreDB:
         }
 
     def user_profile(self, nickname):
-        raw = self._call_admin_facade("user_profile", {"nickname": nickname})
+        raw = self._call_authenticated_facade("user_profile", {"nickname": nickname})
         if not raw:
             return None
         return {
@@ -224,28 +233,4 @@ class CloudStoreDB:
             "discount": float(discount),
             "productDetails": {"id": int(product_id)},
         }
-        return self._call_admin_facade("process_order", payload)
-
-    def process_cart_order(
-        self,
-        customer_name,
-        payment_method,
-        city,
-        items,
-    ):
-        normalized_items = []
-        for item in items:
-            product_id = int(item.get("product_id", 0))
-            quantity = int(item.get("quantity", 0))
-            if product_id > 0 and quantity > 0:
-                normalized_items.append({"productId": product_id, "quantity": quantity})
-
-        payload = json.dumps(
-            {
-                "customerName": customer_name,
-                "paymentMethod": payment_method,
-                "city": city,
-                "items": normalized_items,
-            }
-        )
-        return self._call_facade("process_cart", payload)
+        return self._call_authenticated_facade("process_order", payload)

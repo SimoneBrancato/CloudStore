@@ -9,6 +9,8 @@ import com.cloudstore.dao.interfaces.TransactionDAO;
 import com.cloudstore.model.entities.Product;
 import com.cloudstore.model.entities.Transaction;
 import com.cloudstore.model.dto.*;
+import com.cloudstore.model.dto.auth.AuthenticationResult;
+import com.cloudstore.model.dto.auth.LoginResult;
 import com.cloudstore.service.exception.ServiceException;
 import com.cloudstore.service.impl.*;
 import com.cloudstore.service.interfaces.*;
@@ -22,7 +24,6 @@ import java.util.Comparator;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -34,6 +35,7 @@ public class CloudStoreFacade {
     private final ProductService productService;
     private final UserService userService;
     private final TransactionService transactionService;
+    private final AuthService authService;
     private final ProductDAO productDAO;
     private final TransactionDAO transactionDAO;
     private final DatabaseConnection dbConnection;
@@ -52,6 +54,7 @@ public class CloudStoreFacade {
             this.productDAO = productDAO;
             this.transactionDAO = transactionDAO;
             this.dbConnection = DatabaseConnection.getInstance();
+            this.authService = new AuthServiceImpl();
         } catch (SQLException e) {
             throw new ServiceException("Impossible to initialize CloudStoreFacade", e);
         }
@@ -64,7 +67,8 @@ public class CloudStoreFacade {
             TransactionService transactionService,
             ProductDAO productDAO,
             TransactionDAO transactionDAO,
-            DatabaseConnection dbConnection) {
+            DatabaseConnection dbConnection,
+            AuthService authService) {
         this.permissionService = permissionService;
         this.productService = productService;
         this.userService = userService;
@@ -72,25 +76,31 @@ public class CloudStoreFacade {
         this.productDAO = productDAO;
         this.transactionDAO = transactionDAO;
         this.dbConnection = dbConnection;
+        this.authService = authService;
     }
 
-    public Optional<PermissionDTO> findPermissionById(int id) throws ServiceException {
+    public Optional<PermissionDTO> findPermissionById(String token, int id) throws ServiceException {
+        validateAdminToken(token);
         return permissionService.findById(id);
     }
 
-    public Optional<PermissionDTO> findPermissionByCategory(String category) throws ServiceException {
+    public Optional<PermissionDTO> findPermissionByCategory(String token, String category) throws ServiceException {
+        validateAdminToken(token);
         return permissionService.findByCategory(category);
     }
 
-    public List<PermissionDTO> getAllPermissions() throws ServiceException {
+    public List<PermissionDTO> getAllPermissions(String token) throws ServiceException {
+        validateAdminToken(token);
         return permissionService.findAll();
     }
 
-    public PermissionDTO savePermission(PermissionDTO dto) throws ServiceException {
+    public PermissionDTO savePermission(String token, PermissionDTO dto) throws ServiceException {
+        validateAdminToken(token);
         return permissionService.save(dto);
     }
 
-    public boolean deletePermission(int id) throws ServiceException {
+    public boolean deletePermission(String token, int id) throws ServiceException {
+        validateAdminToken(token);
         return permissionService.delete(id);
     }
 
@@ -120,19 +130,23 @@ public class CloudStoreFacade {
                 .collect(Collectors.toList());
     }
 
-    public ProductDTO saveProduct(ProductDTO dto) throws ServiceException {
+    public ProductDTO saveProduct(String token, ProductDTO dto) throws ServiceException {
+        validateAdminToken(token);
         return productService.save(dto);
     }
 
-    public boolean deleteProduct(int id) throws ServiceException {
+    public boolean deleteProduct(String token, int id) throws ServiceException {
+        validateAdminToken(token);
         return productService.delete(id);
     }
 
-    public boolean updateProductStock(int productId, int newQuantity) throws ServiceException {
+    public boolean updateProductStock(String token, int productId, int newQuantity) throws ServiceException {
+        validateAdminToken(token);
         return productService.updateStock(productId, newQuantity);
     }
 
-    public List<ProductDTO> findLowStockProducts(int threshold) throws ServiceException {
+    public List<ProductDTO> findLowStockProducts(String token, int threshold) throws ServiceException {
+        validateAdminToken(token);
         return productService.findLowStockProducts(threshold);
     }
 
@@ -144,65 +158,60 @@ public class CloudStoreFacade {
         return userService.findByEmail(email);
     }
 
-    public List<UserDTO> findUsersByPermission(int permissionId) throws ServiceException {
+    public List<UserDTO> findUsersByPermission(String token, int permissionId) throws ServiceException {
+        validateAdminToken(token);
         return userService.findByPermission(permissionId);
     }
 
-    public List<UserDTO> getAllUsers() throws ServiceException {
+    public List<UserDTO> getAllUsers(String token) throws ServiceException {
+        validateAdminToken(token);
         return userService.findAll();
     }
 
-    public Map<String, Object> authenticateUser(String nickname, String password) throws ServiceException {
-        UserDTO user = authenticateCredentials(nickname, password);
-
-        String permissionCategory = user.getPermission() != null ? user.getPermission().getCategory() : "";
-        boolean isAdmin = permissionCategory != null
-                && permissionCategory.toLowerCase(Locale.ROOT).contains("admin");
-
-        Map<String, Object> safeUser = new HashMap<>();
-        safeUser.put("nickname", user.getNickname());
-        safeUser.put("name", user.getName());
-        safeUser.put("surname", user.getSurname());
-        safeUser.put("email", user.getEmail());
-        safeUser.put("permission", user.getPermission());
-
-        Map<String, Object> result = new HashMap<>();
-        result.put("user", safeUser);
-        result.put("role", isAdmin ? "admin" : "customer");
-        result.put("isAdmin", isAdmin);
-        return result;
+    public LoginResult authenticateUser(String nickname, String password) throws ServiceException {
+        return authService.authenticateUser(nickname, password);
     }
 
-    public void assertAdminAccess(String nickname, String password) throws ServiceException {
-        UserDTO user = authenticateCredentials(nickname, password);
-        String permissionCategory = user.getPermission() != null ? user.getPermission().getCategory() : "";
-        boolean isAdmin = permissionCategory != null
-                && permissionCategory.toLowerCase(Locale.ROOT).contains("admin");
-        if (!isAdmin) {
+    public AuthenticationResult authenticateByToken(String token) throws ServiceException {
+        return authService.authenticateByToken(token);
+    }
+
+    private UserDTO validateAdminToken(String token) throws ServiceException {
+        UserDTO user = validateToken(token);
+        if (user.getPermission() == null ||
+            !"Admin".equalsIgnoreCase(user.getPermission().getCategory())) {
             throw new ServiceException("Admin access required");
-        }
-    }
-
-    private UserDTO authenticateCredentials(String nickname, String password) throws ServiceException {
-        if (nickname == null || nickname.isBlank()) {
-            throw new ServiceException("Nickname cannot be empty");
-        }
-        if (password == null || password.isBlank()) {
-            throw new ServiceException("Password cannot be empty");
-        }
-
-        UserDTO user = userService.findByNickname(nickname)
-                .orElseThrow(() -> new ServiceException("Invalid credentials"));
-
-        if (!password.equals(user.getPassword())) {
-            throw new ServiceException("Invalid credentials");
         }
         return user;
     }
 
-    public Map<String, Object> getCustomerCheckoutContext(String customerName, Map<Integer, Integer> items) throws ServiceException {
+    private UserDTO validateToken(String token) throws ServiceException {
+        if (token == null || token.isBlank()) {
+            throw new ServiceException("Authentication token required");
+        }
+        AuthenticationResult authResult;
+        try {
+            authResult = authService.authenticateByToken(token);
+        } catch (Exception e) {
+            throw new ServiceException("Invalid or expired token", e);
+        }
+        if (authResult == null || authResult.getNickname() == null || authResult.getNickname().isBlank()) {
+            throw new ServiceException("Invalid or expired token");
+        }
+        Optional<UserDTO> userOpt = userService.findByNickname(authResult.getNickname());
+        if (userOpt.isEmpty()) {
+            throw new ServiceException("User not found");
+        }
+        return userOpt.get();
+    }
+
+    public Map<String, Object> getCustomerCheckoutContext(String token, String customerName, Map<Integer, Integer> items) throws ServiceException {
         if (customerName == null || customerName.isBlank()) {
             throw new ServiceException("Customer name cannot be empty");
+        }
+        UserDTO authenticatedUser = validateToken(token);
+        if (!authenticatedUser.getNickname().equals(customerName)) {
+            throw new ServiceException(authenticatedUser.getNickname() + " is not authorized to access checkout context for " + customerName);
         }
 
         String customerCategory = resolveCustomerCategory(customerName);
@@ -227,15 +236,18 @@ public class CloudStoreFacade {
         return userService.register(dto);
     }
 
-    public boolean deleteUser(String nickname) throws ServiceException {
+    public boolean deleteUser(String token, String nickname) throws ServiceException {
+        validateAdminToken(token);
         return userService.delete(nickname);
     }
 
-    public boolean updateUserPassword(String nickname, String newPassword) throws ServiceException {
+    public boolean updateUserPassword(String token, String nickname, String newPassword) throws ServiceException {
+        validateAdminToken(token);
         return userService.updatePassword(nickname, newPassword);
     }
 
-    public boolean updateUserPermission(String nickname, int newPermissionId) throws ServiceException {
+    public boolean updateUserPermission(String token, String nickname, int newPermissionId) throws ServiceException {
+        validateAdminToken(token);
         return userService.updatePermission(nickname, newPermissionId);
     }
 
@@ -263,31 +275,43 @@ public class CloudStoreFacade {
         return transactionService.findByCity(city);
     }
 
-    public List<TransactionDTO> getAllTransactions() throws ServiceException {
+    public List<TransactionDTO> getAllTransactions(String token) throws ServiceException {
+        validateAdminToken(token);
         return transactionService.findAll();
     }
 
-    public TransactionDTO saveTransaction(TransactionDTO dto) throws ServiceException {
+    public TransactionDTO saveTransaction(String token, TransactionDTO dto) throws ServiceException {
+        validateAdminToken(token);
         return transactionService.save(dto);
     }
 
-    public boolean deleteTransaction(long id) throws ServiceException {
+    public boolean deleteTransaction(String token, long id) throws ServiceException {
+        validateAdminToken(token);
         return transactionService.delete(id);
     }
 
-    public double calculateTotalSales(LocalDateTime start, LocalDateTime end) throws ServiceException {
+    public double calculateTotalSales(String token, LocalDateTime start, LocalDateTime end) throws ServiceException {
+        validateAdminToken(token);
         return transactionService.calculateTotalSales(start, end);
     }
 
-    public int countTransactionsByDateRange(LocalDateTime start, LocalDateTime end) throws ServiceException {
+    public int countTransactionsByDateRange(String token, LocalDateTime start, LocalDateTime end) throws ServiceException {
+        validateAdminToken(token);
         return transactionService.countByDateRange(start, end);
     }
 
-    public List<TransactionDTO> findRecentTransactions(int limit) throws ServiceException {
+    public List<TransactionDTO> findRecentTransactions(String token, int limit) throws ServiceException {
+        validateAdminToken(token);
         return transactionService.findRecentTransactions(limit);
     }
 
-    public TransactionDTO processOrder(TransactionDTO dto) throws ServiceException {
+    public TransactionDTO processOrder(String token, TransactionDTO dto) throws ServiceException {
+        UserDTO authenticatedUser = validateToken(token);
+        if (!authenticatedUser.getNickname().equals(dto.getCustomerName()) &&
+            (authenticatedUser.getPermission() == null ||
+            !"Admin".equalsIgnoreCase(authenticatedUser.getPermission().getCategory()))) {
+            throw new ServiceException("You can only place orders for yourself");
+        }
 
         if (dto.getDate() == null) {
             dto.setDate(LocalDateTime.now());
@@ -341,11 +365,17 @@ public class CloudStoreFacade {
         }
     }
 
-        public Map<String, Object> processCartOrder(
+    public Map<String, Object> processCartOrder(
+            String token,
             String customerName,
             String paymentMethod,
             String city,
             Map<Integer, Integer> items) throws ServiceException {
+
+        UserDTO authenticatedUser = validateToken(token);
+        if (!authenticatedUser.getNickname().equals(customerName)) {
+            throw new ServiceException("You can only place orders for yourself");
+        }
 
         if (customerName == null || customerName.isBlank()) {
             throw new ServiceException("Customer name cannot be empty");
@@ -494,7 +524,8 @@ public class CloudStoreFacade {
         return transactionService.findRecentByProduct(productId, Math.max(1, maxItems));
     }
 
-    public Map<String, Object> getDashboardStats() throws ServiceException {
+    public Map<String, Object> getDashboardStats(String token) throws ServiceException {
+        validateAdminToken(token);
         LocalDateTime startOfMonth = LocalDateTime.now()
                 .withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0).withNano(0);
         LocalDateTime now = LocalDateTime.now();
@@ -511,7 +542,14 @@ public class CloudStoreFacade {
         return stats;
     }
 
-    public Map<String, Object> getUserProfile(String nickname) throws ServiceException {
+    public Map<String, Object> getUserProfile(String token, String nickname) throws ServiceException {
+        UserDTO authenticatedUser = validateToken(token);
+        if (!authenticatedUser.getNickname().equals(nickname) &&
+        (authenticatedUser.getPermission() == null ||
+        !"Admin".equalsIgnoreCase(authenticatedUser.getPermission().getCategory()))) {
+            throw new ServiceException("Access denied: you can only view your own profile");
+        }
+
         Optional<UserDTO> userOpt = userService.findByNickname(nickname);
         if (userOpt.isEmpty()) {
             return null;
@@ -528,7 +566,8 @@ public class CloudStoreFacade {
         return profile;
     }
 
-    public int getFirstAvailablePermissionId() throws ServiceException {
+    public int getFirstAvailablePermissionId(String token) throws ServiceException {
+        validateAdminToken(token);
         return permissionService.findAll().stream()
                 .findFirst()
                 .orElseThrow(() -> new ServiceException("No permission found in database"))
@@ -540,9 +579,20 @@ public class CloudStoreFacade {
     public boolean userExists(String nickname) throws ServiceException{ return userService.exists(nickname); }
     public boolean transactionExists(long id) throws ServiceException { return transactionService.exists(id); }
 
-    public int countPermissions() throws ServiceException  { return permissionService.count(); }
-    public int countProducts() throws ServiceException     { return productService.count(); }
-    public int countUsers() throws ServiceException        { return userService.count(); }
-    public int countTransactions() throws ServiceException { return transactionService.count(); }
+    public int countPermissions(String token) throws ServiceException { 
+        validateAdminToken(token);
+        return permissionService.count(); 
+    }
+    public int countProducts(String token) throws ServiceException { 
+        validateAdminToken(token);
+        return productService.count(); 
+    }
+    public int countUsers(String token) throws ServiceException { 
+        validateAdminToken(token);
+        return userService.count(); 
+    }
+    public int countTransactions(String token) throws ServiceException { 
+        validateAdminToken(token);
+        return transactionService.count(); 
+    }
 }
-

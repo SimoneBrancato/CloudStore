@@ -5,7 +5,6 @@ import re
 import unicodedata
 from pathlib import Path
 from urllib.parse import quote
-from uuid import uuid4
 
 from db import CloudStoreDB
 
@@ -17,51 +16,6 @@ ICON_ASSETS_DIR = ASSETS_DIR / "icons"
 PRODUCT_ASSETS_DIR = ASSETS_DIR / "products"
 SUPPORTED_IMAGE_EXTS = (".png", ".jpg", ".jpeg", ".webp", ".svg")
 
-
-@st.cache_resource
-def _auth_sessions():
-    return {}
-
-def _get_browser_session_id():
-    sid = st.query_params.get("sid")
-    if isinstance(sid, list):
-        return sid[0] if sid else None
-    return sid
-
-def _set_browser_session_id(sid):
-    st.query_params["sid"] = sid
-
-def _clear_browser_session_id():
-    if "sid" in st.query_params:
-        del st.query_params["sid"]
-
-def _persist_auth_session(user, role, password):
-    sid = uuid4().hex
-    _auth_sessions()[sid] = {
-        "user": user,
-        "role": role,
-        "password": password,
-    }
-    st.session_state.auth_sid = sid
-    _set_browser_session_id(sid)
-
-def _restore_auth_session_if_needed():
-    if st.session_state.auth_user is not None:
-        return
-
-    sid = _get_browser_session_id()
-    if not sid:
-        return
-
-    saved = _auth_sessions().get(sid)
-    if not saved:
-        _clear_browser_session_id()
-        return
-
-    st.session_state.auth_user = saved.get("user")
-    st.session_state.auth_role = saved.get("role")
-    st.session_state.auth_password = saved.get("password")
-    st.session_state.auth_sid = sid
 
 def _show_table(rows):
     if not rows:
@@ -166,15 +120,9 @@ def _product_image_source(product):
 
 
 def _reset_session_after_logout():
-    sid = st.session_state.get("auth_sid") or _get_browser_session_id()
-    if sid:
-        _auth_sessions().pop(sid, None)
-    _clear_browser_session_id()
-
     st.session_state.auth_user = None
-    st.session_state.auth_role = None
-    st.session_state.auth_password = None
-    st.session_state.auth_sid = None
+    st.session_state.auth_roles = None
+    st.session_state.auth_token = None
     st.session_state.user_cart = {}
 
 
@@ -189,13 +137,14 @@ def _show_login(db):
             try:
                 auth_data = db.authenticate_user(nickname, password)
                 st.session_state.auth_user = auth_data.get("user")
-                st.session_state.auth_role = auth_data.get("role", "customer")
-                st.session_state.auth_password = password
-                _persist_auth_session(
-                    st.session_state.auth_user,
-                    st.session_state.auth_role,
-                    st.session_state.auth_password,
-                )
+                
+                if "roles" in auth_data:
+                    roles = auth_data["roles"] or []
+                    st.session_state.auth_roles = "admin" if "admin" in roles else "customer"
+                else:
+                    st.session_state.auth_roles = auth_data.get("role", "customer")
+                
+                st.session_state.auth_token = auth_data.get("token")
                 st.success("Login successful")
                 st.rerun()
             except Exception as e:
@@ -358,6 +307,8 @@ def _render_customer_view(db, current_user):
             discount_source = checkout_context.get("discountSource", "recent_average_discount")
             sample_size = int(checkout_context.get("sampleSize", 0))
         except Exception as e:
+            if "token" in str(e).lower():
+                raise
             st.warning(f"Unable to retrieve discount from DB, using 0.0: {e}")
             db_discount = 0.0
             discount_source = "fallback_zero"
@@ -409,12 +360,12 @@ def _render_customer_view(db, current_user):
                         _show_table(summary_rows)
                     st.session_state.user_cart = {}
                 except Exception as e:
+                    if "token" in str(e).lower():
+                        raise
                     st.error(str(e))
 
 
 def _render_admin_view(db, current_user):
-    db.set_auth_context(current_user.get("nickname"), st.session_state.auth_password)
-
     c1, c2 = st.columns([4, 1])
     c1.subheader(f"Admin Control Panel - {current_user.get('nickname', '')}")
     if c2.button("Logout", key="logout_admin"):
@@ -601,20 +552,19 @@ def _render_admin_view(db, current_user):
 
 
 def main():
-    db = CloudStoreDB()
-
     if "user_cart" not in st.session_state:
         st.session_state.user_cart = {}
     if "auth_user" not in st.session_state:
         st.session_state.auth_user = None
-    if "auth_role" not in st.session_state:
-        st.session_state.auth_role = None
-    if "auth_password" not in st.session_state:
-        st.session_state.auth_password = None
-    if "auth_sid" not in st.session_state:
-        st.session_state.auth_sid = None
+    if "auth_roles" not in st.session_state:
+        st.session_state.auth_roles = None
+    if "auth_token" not in st.session_state:
+        st.session_state.auth_token = None
 
-    _restore_auth_session_if_needed()
+    token = st.session_state.get("auth_token")
+    db = CloudStoreDB(token=token) if token else CloudStoreDB()
+
+    user_roles = st.session_state.auth_roles
 
     try:
         db.fetch_one("SELECT 1 as ok")
@@ -626,14 +576,21 @@ def main():
         _show_login(db)
         return
 
-    if st.session_state.auth_role == "admin":
-        if not st.session_state.auth_password:
-            st.error("Missing admin session credentials, please login again")
+    try:
+        if "admin" in user_roles:
+            if not st.session_state.auth_token:
+                st.error("Missing admin session credentials, please login again")
+                _reset_session_after_logout()
+                st.rerun()
+            _render_admin_view(db, st.session_state.auth_user)
+        else:
+            _render_customer_view(db, st.session_state.auth_user)
+    except Exception as e:
+        if "token" in str(e).lower():
             _reset_session_after_logout()
+            st.warning("Session expired. Please login again.")
             st.rerun()
-        _render_admin_view(db, st.session_state.auth_user)
-    else:
-        _render_customer_view(db, st.session_state.auth_user)
+        raise
 
 
 if __name__ == "__main__":
