@@ -37,11 +37,13 @@ public class CloudStoreFacadeBridge {
             String token = req.path("token").asText();
             return MAPPER.valueToTree(facade.getDashboardStats(token));
         });
+
         handlers.put("list_permissions", (facade, payload) -> {
             JsonNode req = parseAuthenticatedRequest(payload);
             String token = req.path("token").asText();
             return MAPPER.valueToTree(facade.getAllPermissions(token));
         });
+
         handlers.put("save_permission", (facade, payload) -> {
             JsonNode req = parseAuthenticatedRequest(payload);
             String token = req.path("token").asText();
@@ -58,12 +60,14 @@ public class CloudStoreFacadeBridge {
             ProductDTO dto = MAPPER.treeToValue(req.path("data"), ProductDTO.class);
             return MAPPER.valueToTree(facade.saveProduct(token, dto));
         });
+
         handlers.put("delete_product", (facade, payload) -> {
             JsonNode req = parseAuthenticatedRequest(payload);
             String token = req.path("token").asText();
             int productId = req.path("data").path("productId").asInt();
             return MAPPER.valueToTree(facade.deleteProduct(token, productId));
         });
+
         handlers.put("low_stock", (facade, payload) -> {
             JsonNode req = parseAuthenticatedRequest(payload);
             String token = req.path("token").asText();
@@ -76,17 +80,20 @@ public class CloudStoreFacadeBridge {
             String token = req.path("token").asText();
             return MAPPER.valueToTree(facade.getAllUsers(token));
         });
+
         handlers.put("register_user", (facade, payload) -> {
             JsonNode req = MAPPER.readTree(payload);
             UserDTO dto = MAPPER.treeToValue(req.path("data"), UserDTO.class);
             return MAPPER.valueToTree(facade.registerUser(dto));
         });
+
         handlers.put("authenticate_user", (facade, payload) -> {
             JsonNode req = MAPPER.readTree(payload);
             String nickname = req.path("nickname").asText();
             String password = req.path("password").asText();
             return MAPPER.valueToTree(facade.authenticateUser(nickname, password));
         });
+
         handlers.put("get_customer_checkout_context", (facade, payload) -> {
             JsonNode req = parseAuthenticatedRequest(payload);
             String token = req.path("token").asText();
@@ -108,12 +115,14 @@ public class CloudStoreFacadeBridge {
             String nickname = req.path("data").path("nickname").asText();
             return MAPPER.valueToTree(facade.getUserProfile(token, nickname));
         });
+
         handlers.put("process_order", (facade, payload) -> {
             JsonNode req = parseAuthenticatedRequest(payload);
             String token = req.path("token").asText();
             TransactionDTO dto = MAPPER.treeToValue(req.path("data"), TransactionDTO.class);
             return MAPPER.valueToTree(facade.processOrder(token, dto));
         });
+        
         handlers.put("process_cart", (facade, payload) -> {
             JsonNode req = parseAuthenticatedRequest(payload);
             String token = req.path("token").asText();
