@@ -3,6 +3,7 @@ package com.cloudstore.service.facade;
 import com.cloudstore.model.dto.PermissionDTO;
 import com.cloudstore.model.dto.TransactionDTO;
 import com.cloudstore.model.dto.UserDTO;
+import com.cloudstore.model.dto.auth.LoginResult;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
@@ -16,16 +17,19 @@ public class CloudStoreFacadeExample {
             ObjectMapper mapper = new ObjectMapper();
             mapper.registerModule(new JavaTimeModule());
 
+            LoginResult adminLogin = facade.authenticateUser("admin", "admin");
+            String adminToken = adminLogin.getToken();
+
             System.out.println("=== CloudStore Remote Facade - Examples ===\n");
 
             // ── 1. Aggregate dashboard (cross-domain) ─────────────────────────────
             System.out.println("1. Dashboard stats (cross-domain):");
-            System.out.println(mapper.writeValueAsString(facade.getDashboardStats()));
+            System.out.println(mapper.writeValueAsString(facade.getDashboardStats(adminToken)));
             System.out.println();
 
             // ── 2. User profile with order history (cross-domain) ─────────────────
             System.out.println("2. User profile with order history:");
-            System.out.println(mapper.writeValueAsString(facade.getUserProfile("Mario Rossi")));
+            System.out.println(mapper.writeValueAsString(facade.getUserProfile(adminToken, "Mario Rossi")));
             System.out.println();
 
             // ── 3. processOrder: check stock -> create transaction -> update stock ─
@@ -46,18 +50,18 @@ public class CloudStoreFacadeExample {
                     }
                     """;
             TransactionDTO order = mapper.readValue(orderJson, TransactionDTO.class);
-            System.out.println("Processed order: " + mapper.writeValueAsString(facade.processOrder(order)));
+            System.out.println("Processed order: " + mapper.writeValueAsString(facade.processOrder(adminToken, order)));
             System.out.println();
 
             // ── 4. User registration with validation ──────────────────────────────
             System.out.println("4. Register a new user (with validation):");
-            if (facade.countPermissions() == 0) {
+            if (facade.countPermissions(adminToken) == 0) {
                 PermissionDTO permission = new PermissionDTO();
                 permission.setId(0);
                 permission.setCategory("user");
-                facade.savePermission(permission);
+                facade.savePermission(adminToken, permission);
             }
-            int validPermissionId = facade.getFirstAvailablePermissionId();
+            int validPermissionId = facade.getFirstAvailablePermissionId(adminToken);
             String newUserJson = String.format("""
                     {
                         "nickname": "luigi.verdii",
@@ -70,23 +74,26 @@ public class CloudStoreFacadeExample {
                     """, validPermissionId);
             UserDTO newUser = mapper.readValue(newUserJson, UserDTO.class);
             System.out.println("Registered user: " + mapper.writeValueAsString(facade.registerUser(newUser)));
+            
+            LoginResult userLogin = facade.authenticateUser("luigi.verdii", "SecurePass123");
+            System.out.println("User token obtained for luigi.verdii: " + userLogin.getToken().substring(0, 20) + "...");
             System.out.println();
 
             // ── 5. Low-stock products ──────────────────────────────────────────────
             System.out.println("5. Low-stock products (< 10):");
-            System.out.println(mapper.writeValueAsString(facade.findLowStockProducts(10)));
+            System.out.println(mapper.writeValueAsString(facade.findLowStockProducts(adminToken, 10)));
             System.out.println();
 
             // ── 6. Last 5 transactions ────────────────────────────────────────────
             System.out.println("6. Last 5 transactions:");
-            System.out.println(mapper.writeValueAsString(facade.findRecentTransactions(5)));
+            System.out.println(mapper.writeValueAsString(facade.findRecentTransactions(adminToken, 5)));
             System.out.println();
 
             // ── 7. Total sales for current month ─────────────────────────────────
             System.out.println("7. Total sales for current month:");
             LocalDateTime startOfMonth = LocalDateTime.now()
                     .withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0);
-            System.out.println("Total: EUR " + facade.calculateTotalSales(startOfMonth, LocalDateTime.now()));
+            System.out.println("Total: EUR " + facade.calculateTotalSales(adminToken, startOfMonth, LocalDateTime.now()));
 
         } catch (Exception e) {
             System.err.println("Error: " + e.getMessage());

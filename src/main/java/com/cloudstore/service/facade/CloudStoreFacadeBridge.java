@@ -7,7 +7,6 @@ import com.cloudstore.model.dto.PermissionDTO;
 import com.cloudstore.model.dto.ProductDTO;
 import com.cloudstore.model.dto.TransactionDTO;
 import com.cloudstore.model.dto.UserDTO;
-import com.cloudstore.service.exception.ServiceException;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -35,19 +34,19 @@ public class CloudStoreFacadeBridge {
 
         handlers.put("dashboard_stats", (facade, payload) -> {
             JsonNode req = parseAuthenticatedRequest(payload);
-            ensureAdmin(facade, req);
-            return MAPPER.valueToTree(facade.getDashboardStats());
+            String token = req.path("token").asText();
+            return MAPPER.valueToTree(facade.getDashboardStats(token));
         });
         handlers.put("list_permissions", (facade, payload) -> {
             JsonNode req = parseAuthenticatedRequest(payload);
-            ensureAdmin(facade, req);
-            return MAPPER.valueToTree(facade.getAllPermissions());
+            String token = req.path("token").asText();
+            return MAPPER.valueToTree(facade.getAllPermissions(token));
         });
         handlers.put("save_permission", (facade, payload) -> {
             JsonNode req = parseAuthenticatedRequest(payload);
-            ensureAdmin(facade, req);
+            String token = req.path("token").asText();
             PermissionDTO dto = MAPPER.treeToValue(req.path("data"), PermissionDTO.class);
-            return MAPPER.valueToTree(facade.savePermission(dto));
+            return MAPPER.valueToTree(facade.savePermission(token, dto));
         });
 
         handlers.put("list_products", (facade, payload) -> MAPPER.valueToTree(facade.getAllProducts()));
@@ -55,31 +54,30 @@ public class CloudStoreFacadeBridge {
         handlers.put("list_products_by_category", (facade, payload) -> MAPPER.valueToTree(facade.findProductsByCategory(payload)));
         handlers.put("save_product", (facade, payload) -> {
             JsonNode req = parseAuthenticatedRequest(payload);
-            ensureAdmin(facade, req);
+            String token = req.path("token").asText();
             ProductDTO dto = MAPPER.treeToValue(req.path("data"), ProductDTO.class);
-            return MAPPER.valueToTree(facade.saveProduct(dto));
+            return MAPPER.valueToTree(facade.saveProduct(token, dto));
         });
         handlers.put("delete_product", (facade, payload) -> {
             JsonNode req = parseAuthenticatedRequest(payload);
-            ensureAdmin(facade, req);
+            String token = req.path("token").asText();
             int productId = req.path("data").path("productId").asInt();
-            return MAPPER.valueToTree(facade.deleteProduct(productId));
+            return MAPPER.valueToTree(facade.deleteProduct(token, productId));
         });
         handlers.put("low_stock", (facade, payload) -> {
             JsonNode req = parseAuthenticatedRequest(payload);
-            ensureAdmin(facade, req);
+            String token = req.path("token").asText();
             int threshold = req.path("data").path("threshold").asInt();
-            return MAPPER.valueToTree(facade.findLowStockProducts(threshold));
+            return MAPPER.valueToTree(facade.findLowStockProducts(token, threshold));
         });
 
         handlers.put("list_users", (facade, payload) -> {
             JsonNode req = parseAuthenticatedRequest(payload);
-            ensureAdmin(facade, req);
-            return MAPPER.valueToTree(facade.getAllUsers());
+            String token = req.path("token").asText();
+            return MAPPER.valueToTree(facade.getAllUsers(token));
         });
         handlers.put("register_user", (facade, payload) -> {
-            JsonNode req = parseAuthenticatedRequest(payload);
-            ensureAdmin(facade, req);
+            JsonNode req = MAPPER.readTree(payload);
             UserDTO dto = MAPPER.treeToValue(req.path("data"), UserDTO.class);
             return MAPPER.valueToTree(facade.registerUser(dto));
         });
@@ -90,70 +88,54 @@ public class CloudStoreFacadeBridge {
             return MAPPER.valueToTree(facade.authenticateUser(nickname, password));
         });
         handlers.put("get_customer_checkout_context", (facade, payload) -> {
-            JsonNode req = MAPPER.readTree(payload);
-            String customerName = req.path("customerName").asText();
-            Map<Integer, Integer> items = new HashMap<>();
-            JsonNode rawItems = req.path("items");
-            if (rawItems.isArray()) {
-                for (JsonNode item : rawItems) {
-                    int productId = item.path("productId").asInt();
-                    int quantity = item.path("quantity").asInt();
-                    if (productId > 0 && quantity > 0) {
-                        items.merge(productId, quantity, Integer::sum);
-                    }
-                }
-            }
-            return MAPPER.valueToTree(facade.getCustomerCheckoutContext(customerName, items));
+            JsonNode req = parseAuthenticatedRequest(payload);
+            String token = req.path("token").asText();
+            JsonNode data = req.path("data");
+            String customerName = data.path("customerName").asText();
+            Map<Integer, Integer> items = parseItems(data.path("items"));
+            return MAPPER.valueToTree(facade.getCustomerCheckoutContext(token, customerName, items));
         });
 
         handlers.put("list_transactions", (facade, payload) -> {
             JsonNode req = parseAuthenticatedRequest(payload);
-            ensureAdmin(facade, req);
+            String token = req.path("token").asText();
             int limit = req.path("data").path("limit").asInt();
-            return MAPPER.valueToTree(facade.findRecentTransactions(limit));
+            return MAPPER.valueToTree(facade.findRecentTransactions(token, limit));
         });
         handlers.put("user_profile", (facade, payload) -> {
             JsonNode req = parseAuthenticatedRequest(payload);
-            ensureAdmin(facade, req);
+            String token = req.path("token").asText();
             String nickname = req.path("data").path("nickname").asText();
-            return MAPPER.valueToTree(facade.getUserProfile(nickname));
+            return MAPPER.valueToTree(facade.getUserProfile(token, nickname));
         });
         handlers.put("process_order", (facade, payload) -> {
             JsonNode req = parseAuthenticatedRequest(payload);
-            ensureAdmin(facade, req);
+            String token = req.path("token").asText();
             TransactionDTO dto = MAPPER.treeToValue(req.path("data"), TransactionDTO.class);
-            return MAPPER.valueToTree(facade.processOrder(dto));
+            return MAPPER.valueToTree(facade.processOrder(token, dto));
         });
         handlers.put("process_cart", (facade, payload) -> {
-            JsonNode req = MAPPER.readTree(payload);
-            String customerName = req.path("customerName").asText();
-            String paymentMethod = req.path("paymentMethod").asText();
-            String city = req.path("city").asText();
+            JsonNode req = parseAuthenticatedRequest(payload);
+            String token = req.path("token").asText();
+            JsonNode data = req.path("data");
+            String customerName = data.path("customerName").asText();
+            String paymentMethod = data.path("paymentMethod").asText();
+            String city = data.path("city").asText();
 
-            Map<Integer, Integer> items = new HashMap<>();
-            JsonNode rawItems = req.path("items");
-            if (rawItems.isArray()) {
-                for (JsonNode item : rawItems) {
-                    int productId = item.path("productId").asInt();
-                    int quantity = item.path("quantity").asInt();
-                    if (productId > 0 && quantity > 0) {
-                        items.merge(productId, quantity, Integer::sum);
-                    }
-                }
-            }
+            Map<Integer, Integer> items = parseItems(data.path("items"));
 
             return MAPPER.valueToTree(
-                    facade.processCartOrder(customerName, paymentMethod, city, items)
+                    facade.processCartOrder(token, customerName, paymentMethod, city, items)
             );
         });
 
         handlers.put("total_sales", (facade, payload) -> {
             JsonNode req = parseAuthenticatedRequest(payload);
-            ensureAdmin(facade, req);
+            String token = req.path("token").asText();
             JsonNode data = req.path("data");
             LocalDateTime start = LocalDateTime.parse(data.get("start").asText());
             LocalDateTime end = LocalDateTime.parse(data.get("end").asText());
-            return MAPPER.valueToTree(facade.calculateTotalSales(start, end));
+            return MAPPER.valueToTree(facade.calculateTotalSales(token, start, end));
         });
 
         return handlers;
@@ -200,16 +182,23 @@ public class CloudStoreFacadeBridge {
 
     private static JsonNode parseAuthenticatedRequest(String payload) throws IOException {
         JsonNode req = MAPPER.readTree(payload);
-        if (!req.has("auth")) {
-            throw new IllegalArgumentException("Missing auth section");
+        if (!req.has("token")) {
+            throw new IllegalArgumentException("Missing token in request");
         }
         return req;
     }
 
-    private static void ensureAdmin(CloudStoreFacade facade, JsonNode req) throws ServiceException {
-        JsonNode auth = req.path("auth");
-        String nickname = auth.path("nickname").asText();
-        String password = auth.path("password").asText();
-        facade.assertAdminAccess(nickname, password);
+    private static Map<Integer, Integer> parseItems(JsonNode itemsNode) {
+        Map<Integer, Integer> items = new HashMap<>();
+        if (itemsNode.isArray()) {
+            for (JsonNode item : itemsNode) {
+                int productId = item.path("productId").asInt();
+                int quantity = item.path("quantity").asInt();
+                if (productId > 0 && quantity > 0) {
+                    items.merge(productId, quantity, Integer::sum);
+                }
+            }
+        }
+        return items;
     }
 }
