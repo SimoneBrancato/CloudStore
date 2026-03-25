@@ -33,16 +33,20 @@ class CloudStoreDB:
         except Exception as e:
             print(f"Backend test failed: {e}", file=sys.stderr)
     
-    def _call_facade(self, method_name, *args):
+    def _call_facade(self, method_name, *args, token=None):
         request = {"method": method_name, "args": args}
         print(f"Sending request: {request}", file=sys.stderr)
         
+        headers = {"Content-Type": "application/json"}
+        if token:
+            headers["Authorization"] = f"Bearer {token}"
+            
         try:
             response = requests.post(
                 self.backend_url,
                 json=request,
                 timeout=30,
-                headers={"Content-Type": "application/json"}
+                headers=headers
             )
             print(f"Response status: {response.status_code}", file=sys.stderr)
             
@@ -74,7 +78,7 @@ class CloudStoreDB:
     def _call_authenticated_facade(self, method_name, *args):
         if not self.token:
             raise RuntimeError("Authentication required: missing token")
-        return self._call_facade(method_name, self.token, *args)
+        return self._call_facade(method_name, *args, token=self.token)
     
     # ==================== AUTH ====================
     def authenticate_user(self, nickname, password):

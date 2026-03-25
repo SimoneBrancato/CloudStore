@@ -83,6 +83,26 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
+    public LoginResult getSessionFromToken(String token) throws ServiceException {
+        try {
+            Claims claims = jwtService.validateAndGetClaims(token);
+            String nickname = claims.getSubject();
+            List<String> roles = jwtService.extractRoles(claims);
+
+            UserDTO user = userService.findByNickname(nickname)
+                    .orElseThrow(() -> new ServiceException("Security alert: User identity no longer valid."));
+            
+            String permissionCategory = user.getPermission() != null ? user.getPermission().getCategory() : "";
+            boolean isAdmin = permissionCategory != null
+                    && permissionCategory.toLowerCase(Locale.ROOT).contains("admin");
+
+            return new LoginResult(token, user, roles, isAdmin);
+        } catch (RuntimeException e) {
+            throw new ServiceException("Identity verification failed: " + e.getMessage());
+        }
+    }
+
+    @Override
     public boolean validateToken(String token) throws ServiceException {
         try {
             if (token == null || token.isBlank()) {
@@ -93,19 +113,6 @@ public class AuthServiceImpl implements AuthService {
             return userService.exists(nickname);
         } catch (Exception e) {
             return false;
-        }
-    }
-
-    @Override
-    public void assertAdminAccess(String nickname, String password) throws ServiceException {
-        UserDTO user = authenticateCredentials(nickname, password);
-        
-        String permissionCategory = user.getPermission() != null ? user.getPermission().getCategory() : "";
-        boolean isAdmin = permissionCategory != null
-                && permissionCategory.toLowerCase(Locale.ROOT).contains("admin");
-                
-        if (!isAdmin) {
-            throw new ServiceException("Access denied: Higher privileges required for this operation.");
         }
     }
 

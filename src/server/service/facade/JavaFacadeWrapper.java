@@ -13,6 +13,8 @@ import java.io.*;
 import java.lang.reflect.Method;
 import java.util.*;
 import java.util.concurrent.Executors;
+import service.security.SecurityContext;
+import model.dto.auth.LoginResult;
 
 public class JavaFacadeWrapper {
     
@@ -82,6 +84,19 @@ public class JavaFacadeWrapper {
                 List<?> argsList = (List<?>) request.getOrDefault("args", new ArrayList<>());
                 Object[] argsArray = argsList.toArray();
                 
+                String authHeader = exchange.getRequestHeaders().getFirst("Authorization");
+                if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                    String token = authHeader.substring(7);
+                    try {
+                        LoginResult session = FACADE.getSessionFromToken(token);
+                        SecurityContext.set(session);
+                    } catch (Exception e) {
+                        System.err.println("Invalid token: " + e.getMessage());
+                        sendErrorResponse(exchange, "Unauthorized: " + e.getMessage(), 401);
+                        return;
+                    }
+                }
+                
                 System.err.println("Invoking: " + methodName + " with args: " + Arrays.toString(argsArray));
                 Object result = invokeMethod(methodName, argsArray);
                 System.err.println("Result: " + result);
@@ -103,17 +118,23 @@ public class JavaFacadeWrapper {
                 System.err.println("Error processing request: " + e.getMessage());
                 e.printStackTrace();
                 
-                Map<String, Object> errorResponse = new HashMap<>();
-                errorResponse.put("ok", false);
-                errorResponse.put("error", e.getMessage());
-                String errorJson = MAPPER.writeValueAsString(errorResponse);
-                
-                exchange.getResponseHeaders().set("Content-Type", "application/json");
-                exchange.sendResponseHeaders(500, errorJson.getBytes().length);
-                OutputStream os = exchange.getResponseBody();
-                os.write(errorJson.getBytes());
-                os.close();
+                sendErrorResponse(exchange, e.getMessage(), 500);
+            } finally {
+                SecurityContext.clear();
             }
+        }
+        
+        private void sendErrorResponse(HttpExchange exchange, String message, int statusCode) throws IOException {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("ok", false);
+            errorResponse.put("error", message);
+            String errorJson = MAPPER.writeValueAsString(errorResponse);
+            
+            exchange.getResponseHeaders().set("Content-Type", "application/json");
+            exchange.sendResponseHeaders(statusCode, errorJson.getBytes().length);
+            OutputStream os = exchange.getResponseBody();
+            os.write(errorJson.getBytes());
+            os.close();
         }
         
         private static Object invokeMethod(String methodName, Object[] args) throws Exception {

@@ -7,6 +7,6 @@ import service.exception.ServiceException;
 public interface AuthService {
     LoginResult authenticateUser(String nickname, String password) throws ServiceException;
     AuthenticationResult authenticateByToken(String token) throws ServiceException;
-    void assertAdminAccess(String nickname, String password) throws ServiceException;
+    LoginResult getSessionFromToken(String token) throws ServiceException;
     boolean validateToken(String token) throws ServiceException;
 }
