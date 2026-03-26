@@ -12,23 +12,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-/**
- * Facade - PUNTO DI INGRESSO UNICO
- * Contiene SOLO chiamate dirette ai service
- * NESSUNA logica di business
- * NESSUN accesso diretto ai DAO
- */
+
 public class CloudStoreFacade {
 
-    private final PermissionService permissionService;
-    private final ProductService productService;
-    private final UserService userService;
-    private final TransactionService transactionService;
-    private final AuthService authService;
-    private final CartService cartService;
-    private final DashboardService dashboardService;
+    private final PermissionService permissionService; // Service for managing permissions
+    private final ProductService productService; // Service for managing products
+    private final UserService userService; // Service for managing users
+    private final TransactionService transactionService; // Service for managing transactions
+    private final AuthService authService; // Service for handling authentication and authorization
+    private final CartService cartService; // Service for managing shopping cart operations
+    private final DashboardService dashboardService; // Service for providing dashboard statistics and user profiles
 
-    // Costruttore con injection
+    // Constructor for CloudStoreFacade with dependency injection
     public CloudStoreFacade(PermissionService permissionService,
                             ProductService productService,
                             UserService userService,
@@ -45,7 +40,7 @@ public class CloudStoreFacade {
         this.dashboardService = dashboardService;
     }
 
-    // Costruttore di default per compatibilità
+    // Default constructor that initializes all services with their default implementations
     public CloudStoreFacade() throws ServiceException {
         try {
             this.permissionService = new PermissionServiceImpl();
@@ -60,7 +55,7 @@ public class CloudStoreFacade {
         }
     }
 
-    // ==================== PERMISSION ====================
+    // PERMISSION 
     public Optional<PermissionDTO> findPermissionById(int id) throws ServiceException {
         return permissionService.findById(id);
     }
@@ -96,7 +91,7 @@ public class CloudStoreFacade {
     }
 
 
-    // ==================== PRODUCT ====================
+    // PRODUCT 
     public Optional<ProductDTO> findProductById(int id) throws ServiceException {
         return productService.findById(id);
     }
@@ -152,7 +147,7 @@ public class CloudStoreFacade {
     }
 
 
-    // ==================== USER ====================
+    // USER 
     public Optional<UserDTO> findUserByNickname(String nickname) throws ServiceException {
         return userService.findByNickname(nickname);
     }
@@ -208,7 +203,7 @@ public class CloudStoreFacade {
     }
 
 
-    // ==================== AUTH ====================
+    // AUTH 
     public LoginResult authenticateUser(String nickname, String password) throws ServiceException {
         return authService.authenticateUser(nickname, password);
     }
@@ -217,7 +212,7 @@ public class CloudStoreFacade {
         return authService.getSessionFromToken(token);
     }
 
-    // ==================== TRANSACTION ====================
+    // TRANSACTION 
     public Optional<TransactionDTO> findTransactionById(long id) throws ServiceException {
         return transactionService.findById(id);
     }
@@ -293,7 +288,7 @@ public class CloudStoreFacade {
     }
 
 
-    // ==================== CART ====================
+    // CART 
     public Map<String, Object> getCheckoutContext(String customerName, Map<Integer, Integer> items) throws ServiceException {
         return cartService.getCheckoutContext(customerName, items);
     }
@@ -310,7 +305,7 @@ public class CloudStoreFacade {
     }
 
 
-    // ==================== DASHBOARD ====================
+    // DASHBOARD 
     public Map<String, Object> getDashboardStats() throws ServiceException {
         return dashboardService.getDashboardStats();
     }

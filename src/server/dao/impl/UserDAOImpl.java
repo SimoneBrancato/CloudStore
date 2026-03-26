@@ -12,12 +12,19 @@ import java.util.Optional;
 
 public class UserDAOImpl implements UserDAO {
     
-    private final DatabaseConnection dbConnection;
+    private final DatabaseConnection dbConnection; // Database connection instance
     
+    // Constructor initializes the database connection
     public UserDAOImpl() throws SQLException {
         this.dbConnection = DatabaseConnection.getInstance();
     }
     
+    /**
+        * Finds a user by their nickname.
+        * @param nickname the nickname of the user
+        * @return an Optional containing the user if found, otherwise empty
+        * @throws SQLException if a database error occurs
+    **/
     @Override
     public Optional<User> findByNickname(String nickname) throws SQLException {
         try (Connection conn = dbConnection.getConnection();
@@ -39,6 +46,12 @@ public class UserDAOImpl implements UserDAO {
         return Optional.empty();
     }
     
+    /**
+        * Finds a user by their email.
+        * @param email the email of the user
+        * @return an Optional containing the user if found, otherwise empty
+        * @throws SQLException if a database error occurs
+    **/
     @Override
     public Optional<User> findByEmail(String email) throws SQLException {
         try (Connection conn = dbConnection.getConnection();
@@ -60,6 +73,12 @@ public class UserDAOImpl implements UserDAO {
         return Optional.empty();
     }
     
+    /**
+        * Finds users by their permission ID.
+        * @param permissionId the ID of the permission
+        * @return a list of users associated with the permission
+        * @throws SQLException if a database error occurs
+    **/
     @Override
     public List<User> findByPermission(int permissionId) throws SQLException {
         List<User> users = new ArrayList<>();
@@ -83,6 +102,11 @@ public class UserDAOImpl implements UserDAO {
         return users;
     }
     
+    /**
+        * Finds all users in the database.
+        * @return a list of all users
+        * @throws SQLException if a database error occurs
+    **/
     @Override
     public List<User> findAll() throws SQLException {
         List<User> users = new ArrayList<>();
@@ -103,6 +127,12 @@ public class UserDAOImpl implements UserDAO {
         return users;
     }
     
+    /**
+        * Saves a user to the database.
+        * @param user the user to save
+        * @return the saved user
+        * @throws SQLException if a database error occurs
+    **/
     @Override
     public User save(User user) throws SQLException {
         if (exists(user.nickname())) {
@@ -111,7 +141,13 @@ public class UserDAOImpl implements UserDAO {
             return insert(user);
         }
     }
-    
+
+    /**
+        * Inserts a new user into the database.
+        * @param user the user to insert
+        * @return the inserted user
+        * @throws SQLException if a database error occurs
+    **/
     private User insert(User user) throws SQLException {
         try (Connection conn = dbConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(
@@ -136,6 +172,12 @@ public class UserDAOImpl implements UserDAO {
         }
     }
     
+    /**
+        * Updates an existing user in the database.
+        * @param user the user to update
+        * @return the updated user
+        * @throws SQLException if a database error occurs
+    **/
     @Override
     public User update(User user) throws SQLException {
         try (Connection conn = dbConnection.getConnection();
@@ -161,6 +203,12 @@ public class UserDAOImpl implements UserDAO {
         }
     }
     
+    /**
+        * Deletes a user from the database.
+        * @param nickname the nickname of the user to delete
+        * @return true if the user was deleted, false otherwise
+        * @throws SQLException if a database error occurs
+    **/
     @Override
     public boolean delete(String nickname) throws SQLException {
         try (Connection conn = dbConnection.getConnection();
@@ -189,6 +237,12 @@ public class UserDAOImpl implements UserDAO {
         }
     }
     
+    /**
+        * Checks if a user exists by their nickname.
+        * @param nickname the nickname of the user
+        * @return true if the user exists, false otherwise
+        * @throws SQLException if a database error occurs
+    **/
     @Override
     public boolean exists(String nickname) throws SQLException {
         try (Connection conn = dbConnection.getConnection();
@@ -207,6 +261,12 @@ public class UserDAOImpl implements UserDAO {
         return false;
     }
     
+    /**
+        * Checks if a user exists by their email.
+        * @param email the email of the user
+        * @return true if the user exists, false otherwise
+        * @throws SQLException if a database error occurs
+    **/
     @Override
     public boolean emailExists(String email) throws SQLException {
         try (Connection conn = dbConnection.getConnection();
@@ -225,6 +285,13 @@ public class UserDAOImpl implements UserDAO {
         return false;
     }
     
+    /**
+        * Updates the password for a user.
+        * @param nickname the nickname of the user
+        * @param newPassword the new password
+        * @return true if the password was updated, false otherwise
+        * @throws SQLException if a database error occurs
+    **/
     @Override
     public boolean updatePassword(String nickname, String newPassword) throws SQLException {
         try (Connection conn = dbConnection.getConnection();
@@ -240,6 +307,13 @@ public class UserDAOImpl implements UserDAO {
         }
     }
     
+    /**
+        * Updates the permission for a user.
+        * @param nickname the nickname of the user
+        * @param newPermissionId the ID of the new permission
+        * @return true if the permission was updated, false otherwise
+        * @throws SQLException if a database error occurs
+    **/
     @Override
     public boolean updatePermission(String nickname, int newPermissionId) throws SQLException {
         try (Connection conn = dbConnection.getConnection();
@@ -255,6 +329,11 @@ public class UserDAOImpl implements UserDAO {
         }
     }
     
+    /**
+        * Counts the total number of users in the database.
+        * @return the number of users
+        * @throws SQLException if a database error occurs
+    **/
     @Override
     public int count() throws SQLException {
         try (Connection conn = dbConnection.getConnection();
@@ -268,6 +347,12 @@ public class UserDAOImpl implements UserDAO {
         return 0;
     }
     
+    /**
+        * Counts the number of users with a specific permission ID.
+        * @param permissionId the ID of the permission
+        * @return the count of users with the specified permission
+        * @throws SQLException if a database error occurs
+    **/
     @Override
     public int countByPermission(int permissionId) throws SQLException {
         try (Connection conn = dbConnection.getConnection();
@@ -286,6 +371,12 @@ public class UserDAOImpl implements UserDAO {
         return 0;
     }
     
+    /**
+        * Maps a ResultSet to a User object.
+        * @param rs the ResultSet
+        * @return the User object
+        * @throws SQLException if a database error occurs
+    **/
     private User mapResultSetToUser(ResultSet rs) throws SQLException {
         Permission permission = new Permission(
             rs.getInt("p_id"),

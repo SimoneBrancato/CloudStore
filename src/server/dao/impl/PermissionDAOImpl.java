@@ -11,12 +11,19 @@ import java.util.Optional;
 
 public class PermissionDAOImpl implements PermissionDAO {
     
-    private final DatabaseConnection dbConnection;
+    private final DatabaseConnection dbConnection; // Database connection instance
     
+    // Constructor initializes the database connection.
     public PermissionDAOImpl() throws SQLException {
         this.dbConnection = DatabaseConnection.getInstance();
     }
     
+    /**
+        * Find a permission by its ID.
+        * @param id: The ID of the permission to find.
+        * @return An Optional containing the found Permission, or empty if not found. 
+        * @throws SQLException If a database access error occurs.
+    **/
     @Override
     public Optional<Permission> findById(int id) throws SQLException {
         try (Connection conn = dbConnection.getConnection();
@@ -33,6 +40,12 @@ public class PermissionDAOImpl implements PermissionDAO {
         return Optional.empty();
     }
     
+    /**
+        * Find a category by its name.
+        * @param category: The name of the category to find.
+        * @return An Optional containing the found Permission, or empty if not found. 
+        * @throws SQLException If a database access error occurs.
+    **/
     @Override
     public Optional<Permission> findByCategory(String category) throws SQLException {
         try (Connection conn = dbConnection.getConnection();
@@ -49,6 +62,11 @@ public class PermissionDAOImpl implements PermissionDAO {
         return Optional.empty();
     }
     
+    /**
+        * Find all permissions in the database.
+        * @return A list of all permissions.
+        * @throws SQLException If a database access error occurs.
+    **/
     @Override
     public List<Permission> findAll() throws SQLException {
         List<Permission> permissions = new ArrayList<>();
@@ -64,6 +82,12 @@ public class PermissionDAOImpl implements PermissionDAO {
         return permissions;
     }
     
+    /**
+        * Save a permission to the database.
+        * @param permission: The permission to save.
+        * @return The saved permission with its ID.
+        * @throws SQLException If a database access error occurs.
+    **/
     @Override
     public Permission save(Permission permission) throws SQLException {
         if (permission.id() != 0 && exists(permission.id())) {
@@ -73,6 +97,12 @@ public class PermissionDAOImpl implements PermissionDAO {
         }
     }
     
+    /**
+        * Insert a new permission into the database.
+        * @param permission: The permission to insert.
+        * @return The inserted permission with its ID.
+        * @throws SQLException If a database access error occurs.
+    **/
     private Permission insert(Permission permission) throws SQLException {
         try (Connection conn = dbConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement("INSERT INTO permissions (Category) VALUES (?)", Statement.RETURN_GENERATED_KEYS)) {
@@ -98,6 +128,12 @@ public class PermissionDAOImpl implements PermissionDAO {
         }
     }
     
+    /**
+        * Update an existing permission in the database.
+        * @param permission: The permission to update.
+        * @return The updated permission with its ID.
+        * @throws SQLException If a database access error occurs.
+    **/
     @Override
     public Permission update(Permission permission) throws SQLException {
         try (Connection conn = dbConnection.getConnection();
@@ -116,6 +152,13 @@ public class PermissionDAOImpl implements PermissionDAO {
         }
     }
     
+
+    /**
+        * Delete a permission from the database.
+        * @param id: The ID of the permission to delete.
+        * @return True if the permission was deleted, false otherwise.
+        * @throws SQLException If a database access error occurs.
+    **/
     @Override
     public boolean delete(int id) throws SQLException {
         if (isInUse(id)) {
@@ -132,6 +175,12 @@ public class PermissionDAOImpl implements PermissionDAO {
         }
     }
     
+    /**
+        * Check if a permission exists in the database.
+        * @param id: The ID of the permission to check.
+        * @return True if the permission exists, false otherwise.
+        * @throws SQLException If a database access error occurs.
+    **/
     @Override
     public boolean exists(int id) throws SQLException {
         try (Connection conn = dbConnection.getConnection();
@@ -148,6 +197,12 @@ public class PermissionDAOImpl implements PermissionDAO {
         return false;
     }
     
+    /**
+        * Check if a permission is in use by any user.
+        * @param id: The ID of the permission to check.
+        * @return True if the permission is in use, false otherwise.
+        * @throws SQLException If a database access error occurs.
+    **/
     @Override
     public boolean isInUse(int id) throws SQLException {
         try (Connection conn = dbConnection.getConnection();
@@ -164,6 +219,11 @@ public class PermissionDAOImpl implements PermissionDAO {
         return false;
     }
     
+    /**
+        * Count the total number of permissions in the database.
+        * @return The total count of permissions.
+        * @throws SQLException If a database access error occurs.
+    **/
     @Override
     public int count() throws SQLException {
         try (Connection conn = dbConnection.getConnection();
@@ -177,6 +237,10 @@ public class PermissionDAOImpl implements PermissionDAO {
         return 0;
     }
     
+    /**
+        * Initialize the database with default permissions if they do not already exist.
+        * @throws SQLException If a database access error occurs.
+    **/
     public void initializeDefaultPermissions() throws SQLException {
         String[] defaultPermissions = {"ADMIN", "MANAGER", "USER", "GUEST"};
         
@@ -188,6 +252,12 @@ public class PermissionDAOImpl implements PermissionDAO {
         }
     }
     
+    /**
+        * Map a ResultSet to a Permission object.
+        * @param rs: The ResultSet to map.
+        * @return The mapped Permission object.
+        * @throws SQLException If a database access error occurs.
+    **/
     private Permission mapResultSetToPermission(ResultSet rs) throws SQLException {
         return new Permission(
             rs.getInt("ID"),

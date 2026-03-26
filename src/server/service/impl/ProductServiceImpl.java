@@ -15,12 +15,21 @@ import java.util.stream.Collectors;
 
 public class ProductServiceImpl implements ProductService {
 
+    // Dependency on ProductDAO to perform database operations related to products
     private final ProductDAO productDAO;
 
+    /** 
+        * Constructor for ProductServiceImpl that accepts a ProductDAO instance.
+        * @param productDAO The ProductDAO instance to use for database operations.
+    **/
     public ProductServiceImpl(ProductDAO productDAO) {
         this.productDAO = productDAO;
     }
 
+    /** 
+        * Default constructor for ProductServiceImpl that initializes the ProductDAO with a default implementation.
+        * @throws ServiceException If initialization fails due to database connection issues or other problems.
+    **/
     public ProductServiceImpl() throws ServiceException {
         try {
             this.productDAO = new ProductDAOImpl();
@@ -29,6 +38,12 @@ public class ProductServiceImpl implements ProductService {
         }
     }
 
+    /** 
+        * Retrieves a product by its unique identifier.
+        * @param id The unique identifier of the product to retrieve.
+        * @return An Optional containing the ProductDTO if found, or empty if not found.
+        * @throws ServiceException If an error occurs while retrieving the product from the database.
+    **/
     @Override
     public Optional<ProductDTO> findById(int id) throws ServiceException {
         try {
@@ -38,6 +53,12 @@ public class ProductServiceImpl implements ProductService {
         }
     }
 
+    /** 
+        * Retrieves products by their name.
+        * @param name The name of the products to retrieve.
+        * @return A list of ProductDTOs representing the found products.
+        * @throws ServiceException If an error occurs while searching for products.
+    **/
     @Override
     public List<ProductDTO> findByName(String name) throws ServiceException {
         try {
@@ -49,6 +70,12 @@ public class ProductServiceImpl implements ProductService {
         }
     }
 
+    /** 
+        * Retrieves products by their category.
+        * @param category The category of the products to retrieve.
+        * @return A list of ProductDTOs representing the found products.
+        * @throws ServiceException If an error occurs while searching for products.
+    **/
     @Override
     public List<ProductDTO> findByCategory(String category) throws ServiceException {
         try {
@@ -60,6 +87,11 @@ public class ProductServiceImpl implements ProductService {
         }
     }
 
+    /** 
+        * Retrieves all products from the database.
+        * @return A list of ProductDTOs representing all products.
+        * @throws ServiceException If an error occurs while retrieving products from the database.
+    **/
     @Override
     public List<ProductDTO> findAll() throws ServiceException {
         try {
@@ -71,6 +103,11 @@ public class ProductServiceImpl implements ProductService {
         }
     }
 
+    /** 
+        * Retrieves a list of all unique product categories available in the database.
+        * @return A list of unique product category names.
+        * @throws ServiceException If an error occurs while retrieving product categories from the database.
+    **/
     @Override
     public List<String> findAllCategories() throws ServiceException {
         try {
@@ -86,6 +123,12 @@ public class ProductServiceImpl implements ProductService {
         }
     }
 
+    /** 
+        * Saves a product to the database. If the product already exists, it will be updated; otherwise, a new product will be created.
+        * @param dto The ProductDTO containing the product data to save.
+        * @return The saved ProductDTO with any generated fields (e.g., ID) populated.
+        * @throws ServiceException If an error occurs while saving the product to the database, such as validation errors or SQL exceptions.
+    **/
     @Override
     public ProductDTO save(ProductDTO dto) throws ServiceException {
         validate(dto);
@@ -97,6 +140,12 @@ public class ProductServiceImpl implements ProductService {
         }
     }
 
+    /** 
+        * Deletes a product by its unique identifier.
+        * @param id The unique identifier of the product to delete.
+        * @return true if the product was successfully deleted, false otherwise (e.g., if the product does not exist).
+        * @throws ServiceException If an error occurs while deleting the product from the database, such as SQL exceptions.
+    **/
     @Override
     public boolean delete(int id) throws ServiceException {
         try {
@@ -106,6 +155,13 @@ public class ProductServiceImpl implements ProductService {
         }
     }
 
+    /** 
+        * Updates the stock quantity of a product.
+        * @param productId The unique identifier of the product to update.
+        * @param newQuantity The new stock quantity to set for the product.
+        * @return true if the stock was successfully updated, false otherwise (e.g., if the product does not exist).
+        * @throws ServiceException If an error occurs while updating the product stock in the database, such as SQL exceptions or validation errors.
+    **/
     @Override
     public boolean updateStock(int productId, int newQuantity) throws ServiceException {
         if (newQuantity < 0) {
@@ -118,6 +174,12 @@ public class ProductServiceImpl implements ProductService {
         }
     }
 
+    /** 
+        * Retrieves a list of products that have stock quantities below a specified threshold.
+        * @param threshold The stock quantity threshold to compare against.
+        * @return A list of ProductDTOs representing the products with low stock.
+        * @throws ServiceException If an error occurs while retrieving low-stock products from the database, such as SQL exceptions or validation errors.
+    **/
     @Override
     public List<ProductDTO> findLowStockProducts(int threshold) throws ServiceException {
         if (threshold < 0) {
@@ -132,6 +194,12 @@ public class ProductServiceImpl implements ProductService {
         }
     }
 
+    /** 
+        * Checks if a product with the specified ID exists in the database.
+        * @param id The unique identifier of the product to check.
+        * @return true if the product exists, false otherwise.
+        * @throws ServiceException If an error occurs while checking product existence in the database, such as SQL exceptions.
+    **/
     @Override
     public boolean exists(int id) throws ServiceException {
         try {
@@ -141,6 +209,11 @@ public class ProductServiceImpl implements ProductService {
         }
     }
 
+    /** 
+        * Counts the total number of products in the database.
+        * @return The total count of products.
+        * @throws ServiceException If an error occurs while counting products in the database, such as SQL exceptions.
+    **/
     @Override
     public int count() throws ServiceException {
         try {
@@ -150,6 +223,11 @@ public class ProductServiceImpl implements ProductService {
         }
     }
 
+    /** 
+        * Validates the fields of a ProductDTO before saving it to the database.
+        * @param dto The ProductDTO to validate.
+        * @throws ServiceException If any validation rules are violated, such as empty name, negative price, or negative stock.
+    **/
     private void validate(ProductDTO dto) throws ServiceException {
         if (dto.getName() == null || dto.getName().isBlank()) {
             throw new ServiceException("Product name cannot be empty");

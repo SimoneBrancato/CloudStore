@@ -18,10 +18,16 @@ import model.dto.auth.AuthenticationResult;
 
 public class JavaFacadeWrapper {
     
+    // Mapper for JSON serialization/deserialization
     private static final ObjectMapper MAPPER = new ObjectMapper();
+    
+    // Facade instance to handle business logic
     private static final CloudStoreFacade FACADE;
+
+    // Port number for the HTTP server
     private static final int PORT = 9999;
     
+    // Static initializer to set up the facade and JSON mapper
     static {
         MAPPER.registerModule(new JavaTimeModule());
         try {
@@ -35,6 +41,10 @@ public class JavaFacadeWrapper {
         }
     }
     
+    /**
+     * Main method to start the HTTP server and listen for incoming requests.
+     * The server will handle requests to invoke methods on the CloudStoreFacade.
+    **/
     public static void main(String[] args) throws Exception {
         System.err.println("HTTP Server starting on port " + PORT);
         
@@ -48,9 +58,14 @@ public class JavaFacadeWrapper {
     }
     
     static class FacadeHandler implements HttpHandler {
+        
+        /** 
+         * Handles incoming HTTP requests.
+         * @param exchange The HttpExchange object containing request and response information.
+         * @throws IOException If an I/O error occurs while handling the request.
+        **/
         @Override
         public void handle(HttpExchange exchange) throws IOException {
-            // Gestisci richieste GET per health check
             if ("GET".equals(exchange.getRequestMethod())) {
                 String response = "{\"status\": \"ok\"}";
                 exchange.getResponseHeaders().set("Content-Type", "application/json");
@@ -61,14 +76,12 @@ public class JavaFacadeWrapper {
                 return;
             }
             
-            // Solo POST per le chiamate RPC
             if (!"POST".equals(exchange.getRequestMethod())) {
                 exchange.sendResponseHeaders(405, -1);
                 return;
             }
             
             try {
-                // Leggi il body della richiesta
                 InputStreamReader isr = new InputStreamReader(exchange.getRequestBody(), "utf-8");
                 BufferedReader br = new BufferedReader(isr);
                 StringBuilder sb = new StringBuilder();
@@ -124,6 +137,13 @@ public class JavaFacadeWrapper {
             }
         }
         
+        /** 
+         * Sends an error response with the specified message and HTTP status code.
+         * @param exchange The HttpExchange object to send the response through.
+         * @param message The error message to include in the response body.
+         * @param statusCode The HTTP status code to set for the response.
+         * @throws IOException If an I/O error occurs while sending the response.
+        **/
         private void sendErrorResponse(HttpExchange exchange, String message, int statusCode) throws IOException {
             Map<String, Object> errorResponse = new HashMap<>();
             errorResponse.put("ok", false);
@@ -137,6 +157,13 @@ public class JavaFacadeWrapper {
             os.close();
         }
         
+        /** 
+         * Invokes the specified method on the CloudStoreFacade with the given arguments.
+         * @param methodName The name of the method to invoke.
+         * @param args The arguments to pass to the method.
+         * @return The result of the method invocation.
+         * @throws Exception If an error occurs while invoking the method.
+        **/
         private static Object invokeMethod(String methodName, Object[] args) throws Exception {
             Method[] methods = CloudStoreFacade.class.getMethods();
             Method targetMethod = null;

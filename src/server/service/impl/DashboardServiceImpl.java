@@ -14,11 +14,23 @@ import java.util.Optional;
 
 public class DashboardServiceImpl implements DashboardService {
 
+    // Dependencies on various services to retrieve data for the dashboard
     private final ProductService productService;
+
+    // Dependencies on various services to retrieve data for the dashboard
     private final UserService userService;
+
+    // Dependencies on various services to retrieve data for the dashboard
     private final TransactionService transactionService;
+
+    // Dependencies on various services to retrieve data for the dashboard
     private final PermissionService permissionService;
 
+    /** 
+        * Constructor for DashboardServiceImpl.
+        * Initializes the required services for retrieving dashboard data.
+        * @throws ServiceException If initialization fails due to service instantiation issues.
+    **/
     public DashboardServiceImpl() throws ServiceException {
         System.err.println("Initializing DashboardServiceImpl...");
         try {
@@ -34,6 +46,11 @@ public class DashboardServiceImpl implements DashboardService {
         }
     }
 
+    /** 
+        * Retrieves various statistics for the dashboard, such as total products, users, transactions, permissions, monthly sales, and low stock products.
+        * @return A map containing the dashboard statistics.
+        * @throws ServiceException If an error occurs while retrieving any of the statistics.
+    **/
     @Override
     public Map<String, Object> getDashboardStats() throws ServiceException {
         System.err.println("=== getDashboardStats called ===");
@@ -44,7 +61,6 @@ public class DashboardServiceImpl implements DashboardService {
                     .withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0).withNano(0);
             LocalDateTime now = LocalDateTime.now();
             
-            // Conta prodotti
             int totalProducts = 0;
             try {
                 totalProducts = productService.count();
@@ -56,7 +72,6 @@ public class DashboardServiceImpl implements DashboardService {
             }
             stats.put("totalProducts", totalProducts);
             
-            // Conta utenti
             int totalUsers = 0;
             try {
                 totalUsers = userService.count();
@@ -68,7 +83,6 @@ public class DashboardServiceImpl implements DashboardService {
             }
             stats.put("totalUsers", totalUsers);
             
-            // Conta transazioni
             int totalTransactions = 0;
             try {
                 totalTransactions = transactionService.count();
@@ -80,7 +94,6 @@ public class DashboardServiceImpl implements DashboardService {
             }
             stats.put("totalTransactions", totalTransactions);
             
-            // Conta permessi
             int totalPermissions = 0;
             try {
                 totalPermissions = permissionService.count();
@@ -92,7 +105,6 @@ public class DashboardServiceImpl implements DashboardService {
             }
             stats.put("totalPermissions", totalPermissions);
             
-            // Calcola vendite mensili
             double monthlySales = 0.0;
             try {
                 monthlySales = transactionService.calculateTotalSales(startOfMonth, now);
@@ -104,7 +116,6 @@ public class DashboardServiceImpl implements DashboardService {
             }
             stats.put("monthlySales", monthlySales);
             
-            // Conta transazioni mensili
             int monthlyTransactions = 0;
             try {
                 monthlyTransactions = transactionService.countByDateRange(startOfMonth, now);
@@ -116,7 +127,6 @@ public class DashboardServiceImpl implements DashboardService {
             }
             stats.put("monthlyTransactions", monthlyTransactions);
             
-            // Conta prodotti con stock basso
             int lowStockProducts = 0;
             try {
                 List<ProductDTO> lowStock = productService.findLowStockProducts(10);
@@ -135,7 +145,6 @@ public class DashboardServiceImpl implements DashboardService {
         } catch (Exception e) {
             System.err.println("Fatal error in getDashboardStats: " + e.getMessage());
             e.printStackTrace();
-            // Restituisci stats vuote invece di lanciare eccezione
             stats.put("totalProducts", 0);
             stats.put("totalUsers", 0);
             stats.put("totalTransactions", 0);
@@ -147,6 +156,12 @@ public class DashboardServiceImpl implements DashboardService {
         }
     }
 
+    /** 
+        * Retrieves the user profile information for a given nickname, including user details, order history, total orders, and total amount spent.
+        * @param nickname The nickname of the user whose profile is being retrieved.
+        * @return A map containing the user's profile information, or null if the user is not found.
+        * @throws ServiceException If an error occurs while retrieving the user profile information.
+    **/
     @Override
     public Map<String, Object> getUserProfile(String nickname) throws ServiceException {
         try {

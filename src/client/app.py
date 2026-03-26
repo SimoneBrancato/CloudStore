@@ -128,7 +128,6 @@ def _reset_session_after_logout():
 
 def _show_login(db):
     st.subheader("Login")
-    st.caption("Access is role-based: customers see the shop, admins see the control panel")
     with st.form("login_form"):
         nickname = st.text_input("Nickname")
         password = st.text_input("Password", type="password")
@@ -197,7 +196,7 @@ def _render_customer_view(db, current_user):
     else:
         products = db.list_products_by_category(selected_category)
 
-    shop_tab, cart_tab = st.tabs(["Catalog", "🛒 Cart"])
+    shop_tab, cart_tab = st.tabs(["Catalog", "Cart"])
 
     with shop_tab:
         st.markdown(f"### Products in category: {selected_category}")

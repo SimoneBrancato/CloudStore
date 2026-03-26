@@ -13,12 +13,19 @@ import java.util.Optional;
 
 public class TransactionDAOImpl implements TransactionDAO {
     
-    private final DatabaseConnection dbConnection;
-    
+    private final DatabaseConnection dbConnection; // Database connection instance
+
+    // Constructor initializes the database connection
     public TransactionDAOImpl() throws SQLException {
         this.dbConnection = DatabaseConnection.getInstance();
     }
     
+    /**
+        * Finds a transaction by its ID.
+        * @param id the transaction ID
+        * @return an Optional containing the transaction if found, otherwise empty
+        * @throws SQLException if a database error occurs
+    **/
     @Override
     public Optional<Transaction> findById(long id) throws SQLException {
         try (Connection conn = dbConnection.getConnection();
@@ -39,7 +46,13 @@ public class TransactionDAOImpl implements TransactionDAO {
         }
         return Optional.empty();
     }
-    
+
+    /**
+        * Finds transactions by customer name.
+        * @param customerName the name of the customer
+        * @return a list of transactions associated with the customer
+        * @throws SQLException if a database error occurs
+    **/
     @Override
     public List<Transaction> findByCustomer(String customerName) throws SQLException {
         List<Transaction> transactions = new ArrayList<>();
@@ -63,7 +76,13 @@ public class TransactionDAOImpl implements TransactionDAO {
         }
         return transactions;
     }
-    
+
+    /**
+        * Finds transactions by product ID.
+        * @param productId the ID of the product
+        * @return a list of transactions associated with the product
+        * @throws SQLException if a database error occurs
+    **/
     @Override
     public List<Transaction> findByProduct(int productId) throws SQLException {
         List<Transaction> transactions = new ArrayList<>();
@@ -88,6 +107,13 @@ public class TransactionDAOImpl implements TransactionDAO {
         return transactions;
     }
 
+    /**
+        * Finds recent transactions for a specific product.
+        * @param productId the ID of the product
+        * @param limit the maximum number of transactions to return
+        * @return a list of recent transactions associated with the product
+        * @throws SQLException if a database error occurs
+    **/
     @Override
     public List<Transaction> findRecentByProduct(int productId, int limit) throws SQLException {
         List<Transaction> transactions = new ArrayList<>();
@@ -113,7 +139,14 @@ public class TransactionDAOImpl implements TransactionDAO {
         }
         return transactions;
     }
-    
+
+    /**
+        * Finds transactions within a specified date range.
+        * @param start the start date and time
+        * @param end the end date and time
+        * @return a list of transactions that occurred within the date range
+        * @throws SQLException if a database error occurs
+    **/
     @Override
     public List<Transaction> findByDateRange(LocalDateTime start, LocalDateTime end) throws SQLException {
         List<Transaction> transactions = new ArrayList<>();
@@ -139,6 +172,12 @@ public class TransactionDAOImpl implements TransactionDAO {
         return transactions;
     }
     
+    /**
+        * Finds transactions by payment method.
+        * @param paymentMethod the payment method
+        * @return a list of transactions associated with the payment method
+        * @throws SQLException if a database error occurs
+    **/
     @Override
     public List<Transaction> findByPaymentMethod(String paymentMethod) throws SQLException {
         List<Transaction> transactions = new ArrayList<>();
@@ -163,6 +202,12 @@ public class TransactionDAOImpl implements TransactionDAO {
         return transactions;
     }
     
+    /**
+        * Finds transactions by city.
+        * @param city the city
+        * @return a list of transactions associated with the city
+        * @throws SQLException if a database error occurs
+    **/
     @Override
     public List<Transaction> findByCity(String city) throws SQLException {
         List<Transaction> transactions = new ArrayList<>();
@@ -187,6 +232,11 @@ public class TransactionDAOImpl implements TransactionDAO {
         return transactions;
     }
     
+    /**
+        * Retrieves all transactions from the database.
+        * @return a list of all transactions
+        * @throws SQLException if a database error occurs
+    **/
     @Override
     public List<Transaction> findAll() throws SQLException {
         List<Transaction> transactions = new ArrayList<>();
@@ -207,6 +257,12 @@ public class TransactionDAOImpl implements TransactionDAO {
         return transactions;
     }
     
+    /**
+        * Saves a transaction to the database. If the transaction has an ID of 0, a new ID will be generated.
+        * @param transaction the transaction to save
+        * @return the saved transaction with an assigned ID
+        * @throws SQLException if a database error occurs
+    **/
     @Override
     public Transaction save(Transaction transaction) throws SQLException {
         try (Connection conn = dbConnection.getConnection()) {
@@ -214,6 +270,13 @@ public class TransactionDAOImpl implements TransactionDAO {
         }
     }
 
+    /**
+        * Saves a transaction to the database using an existing connection. This method is used for transactions that are part of a larger operation.
+        * @param conn the database connection to use
+        * @param transaction the transaction to save
+        * @return the saved transaction with an assigned ID
+        * @throws SQLException if a database error occurs
+    **/
     @Override
     public Transaction save(Connection conn, Transaction transaction) throws SQLException {
         final int maxRetries = 5;
@@ -258,6 +321,12 @@ public class TransactionDAOImpl implements TransactionDAO {
         }
     }
 
+    /**
+        * Retrieves the next available transaction ID by finding the maximum existing ID and adding 1. This method is used to generate unique IDs for new transactions.
+        * @param conn the database connection to use
+        * @return the next available transaction ID
+        * @throws SQLException if a database error occurs
+    **/
     private long getNextId(Connection conn) throws SQLException {
         try (PreparedStatement stmt = conn.prepareStatement(
             "SELECT COALESCE(MAX(Transaction_ID), 0) + 1 FROM transactions"
@@ -267,6 +336,12 @@ public class TransactionDAOImpl implements TransactionDAO {
         }
     }
     
+    /**
+        * Deletes a transaction from the database.
+        * @param id the ID of the transaction to delete
+        * @return true if the transaction was deleted, false otherwise
+        * @throws SQLException if a database error occurs
+    **/
     @Override
     public boolean delete(long id) throws SQLException {
         try (Connection conn = dbConnection.getConnection();
@@ -279,6 +354,12 @@ public class TransactionDAOImpl implements TransactionDAO {
         }
     }
     
+    /**
+        * Checks if a transaction with the specified ID exists in the database.
+        * @param id the ID of the transaction to check
+        * @return true if the transaction exists, false otherwise
+        * @throws SQLException if a database error occurs
+    **/
     @Override
     public boolean exists(long id) throws SQLException {
         try (Connection conn = dbConnection.getConnection();
@@ -297,6 +378,13 @@ public class TransactionDAOImpl implements TransactionDAO {
         return false;
     }
     
+    /**
+        * Calculates the total sales for a given date range.
+        * @param start the start date of the range
+        * @param end the end date of the range
+        * @return the total sales amount
+        * @throws SQLException if a database error occurs
+    **/
     @Override
     public double calculateTotalSales(LocalDateTime start, LocalDateTime end) throws SQLException {
         try (Connection conn = dbConnection.getConnection();
@@ -316,6 +404,13 @@ public class TransactionDAOImpl implements TransactionDAO {
         return 0.0;
     }
     
+    /**
+        * Counts the number of transactions within a given date range.
+        * @param start the start date of the range
+        * @param end the end date of the range
+        * @return the count of transactions
+        * @throws SQLException if a database error occurs
+    **/
     @Override
     public int countByDateRange(LocalDateTime start, LocalDateTime end) throws SQLException {
         try (Connection conn = dbConnection.getConnection();
@@ -335,6 +430,12 @@ public class TransactionDAOImpl implements TransactionDAO {
         return 0;
     }
     
+    /**
+        * Finds the most recent transactions up to a specified limit.
+        * @param limit the maximum number of transactions to retrieve
+        * @return a list of recent transactions
+        * @throws SQLException if a database error occurs
+    **/
     @Override
     public List<Transaction> findRecentTransactions(int limit) throws SQLException {
         List<Transaction> transactions = new ArrayList<>();
@@ -358,6 +459,11 @@ public class TransactionDAOImpl implements TransactionDAO {
         return transactions;
     }
     
+    /**
+        * Counts the total number of transactions in the database.
+        * @return the total count of transactions
+        * @throws SQLException if a database error occurs
+    **/
     @Override
     public int count() throws SQLException {
         try (Connection conn = dbConnection.getConnection();
@@ -371,6 +477,12 @@ public class TransactionDAOImpl implements TransactionDAO {
         return 0;
     }
     
+    /**
+        * Maps a ResultSet row to a Transaction object. This method is used to convert database query results into Transaction instances.
+        * @param rs the ResultSet containing the transaction data
+        * @return a Transaction object representing the data in the ResultSet
+        * @throws SQLException if a database error occurs while accessing the ResultSet
+    **/
     private Transaction mapResultSetToTransaction(ResultSet rs) throws SQLException {
         Product product = new Product(
             rs.getInt("Product_Id"),

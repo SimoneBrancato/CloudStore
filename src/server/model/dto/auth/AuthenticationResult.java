@@ -4,42 +4,42 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-/**
- * Holds the result of a successful token validation.
- * Contains the username and roles of the authenticated user.
- * This object is immutable (can't be changed after creation).
- */
+
 public final class AuthenticationResult {
 
-    /** The username of the authenticated user. */
-    private final String nickname;
-
-    /** List of roles assigned to the user. */
-    private final List<String> roles;
+    private final String nickname; // The nickname of the authenticated user
+    private final List<String> roles; // The roles associated with the authenticated user
 
     /**
-     * Creates a new AuthenticationResult.
-     *
-     * @param nickname The username
-     * @param roles    List of roles (if null, an empty list is stored)
-     */
+        * Constructor for AuthenticationResult.
+        * @param nickname The nickname of the authenticated user.
+        * @param roles The roles associated with the authenticated user. If null, it will be treated as an empty list.
+    **/
     public AuthenticationResult(String nickname, List<String> roles) {
         this.nickname = nickname;
-        // Store an unmodifiable copy of the list so it can't be modified from outside
         this.roles = roles != null ? Collections.unmodifiableList(roles) : Collections.emptyList();
     }
 
+    /**
+        * Gets the nickname of the authenticated user.
+        * @return The nickname.
+    **/
     public String getNickname() {
         return nickname;
     }
 
     /**
-     * Returns the roles as an unmodifiable list.
-     */
+        * Gets the roles associated with the authenticated user.
+        * @return The list of roles.
+    **/
     public List<String> getRoles() {
         return roles;
     }
 
+    /**
+        * Indicates whether the authenticated user has administrative privileges.
+        * @return True if the user is an admin, false otherwise.
+    **/
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -49,11 +49,19 @@ public final class AuthenticationResult {
                Objects.equals(roles, that.roles);
     }
 
+    /**
+        * Generates a hash code for the authenticated user.
+        * @return The hash code.
+    **/
     @Override
     public int hashCode() {
         return Objects.hash(nickname, roles);
     }
 
+    /**
+        * Generates a string representation of the authenticated user.
+        * @return The string representation.
+    **/
     @Override
     public String toString() {
         return "AuthenticationResult{" +

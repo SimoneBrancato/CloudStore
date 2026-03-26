@@ -1,24 +1,20 @@
-# src/client/db.py
 import json
 import os
 import requests
 import sys
-import time
+
 
 class CloudStoreDB:
     def __init__(self, token=None):
         self.token = token
         backend_host = os.getenv('BACKEND_HOST', 'server')
         backend_port = os.getenv('BACKEND_PORT', '9999')
-        # Assicurati che l'URL sia corretto
         self.backend_url = f"http://{backend_host}:{backend_port}"
         print(f"Backend URL: {self.backend_url}", file=sys.stderr)
         
-        # Test connessione all'avvio
         self._test_connection()
     
     def _test_connection(self):
-        """Testa la connessione al backend"""
         try:
             response = requests.get(f"{self.backend_url}/", timeout=5)
             print(f"Backend connection test: status={response.status_code}, response={response.text}", file=sys.stderr)
@@ -80,11 +76,11 @@ class CloudStoreDB:
             raise RuntimeError("Authentication required: missing token")
         return self._call_facade(method_name, *args, token=self.token)
     
-    # ==================== AUTH ====================
+    #  AUTH 
     def authenticate_user(self, nickname, password):
         return self._call_facade("authenticateUser", nickname, password)
     
-    # ==================== PRODUCT ====================
+    #  PRODUCT 
     def list_products(self):
         return self._call_facade("getAllProducts")
     
@@ -115,7 +111,7 @@ class CloudStoreDB:
     def low_stock_products(self, threshold):
         return self._call_authenticated_facade("findLowStockProducts", int(threshold))
     
-    # ==================== USER ====================
+    #  USER 
     def list_users(self):
         return self._call_authenticated_facade("getAllUsers")
     
@@ -130,7 +126,7 @@ class CloudStoreDB:
         }
         return self._call_facade("registerUser", user)
     
-    # ==================== PERMISSION ====================
+    #  PERMISSION 
     def list_permissions(self):
         return self._call_authenticated_facade("getAllPermissions")
     
@@ -141,7 +137,7 @@ class CloudStoreDB:
     def get_first_available_permission_id(self):
         return self._call_authenticated_facade("getFirstAvailablePermissionId")
     
-    # ==================== TRANSACTION ====================
+    #  TRANSACTION 
     def list_transactions(self, limit=50):
         return self._call_authenticated_facade("findRecentTransactions", int(limit))
     

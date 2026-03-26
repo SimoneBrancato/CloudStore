@@ -18,15 +18,9 @@ import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
-/**
- * Centralized service for JWT (JSON Web Token) operations.
- * Handles token generation, validation, and claim extraction.
- * Designed to be thread-safe and immutable after construction.
- * Supports Role-Based Access Control (RBAC) with multiple roles.
- */
 public class JWTService {
 
-    // Immutable configuration fields
+    
     private final long expirationTimeMs;   // Token validity duration in milliseconds
     private final String issuer;           // Required issuer claim (e.g., "cloudstore-api")
     private final String audience;         // Required audience claim (e.g., "cloudstore-client")
@@ -34,14 +28,12 @@ public class JWTService {
     private final JwtParser jwtParser;     // Pre-configured parser with strict validation
 
     /**
-     * Constructs the JWT service with mandatory configuration.
-     * Fail-fast validation ensures all parameters are properly set.
-     *
-     * @param base64Secret     Base64-encoded secret (must decode to at least 32 bytes for HS256)
-     * @param expirationTimeMs Token expiration in milliseconds (must be > 0)
-     * @param issuer           Issuer identifier (must not be null/blank)
-     * @param audience         Intended audience (must not be null/blank)
-     * @throws IllegalArgumentException if any configuration is invalid
+        * Constructs the JWT service with mandatory configuration.
+        * @param base64Secret     Base64-encoded secret (must decode to at least 32 bytes for HS256)
+        * @param expirationTimeMs Token expiration in milliseconds (must be > 0)
+        * @param issuer           Issuer identifier (must not be null/blank)
+        * @param audience         Intended audience (must not be null/blank)
+        * @throws IllegalArgumentException if any configuration is invalid
      */
     public JWTService(String base64Secret, long expirationTimeMs, String issuer, String audience) {
         // Fail-fast: secret must be present
@@ -79,19 +71,21 @@ public class JWTService {
                 .clockSkewSeconds(30)                // Allow small time differences
                 .build();
     }
+
     /**
-     * Generates a signed JWT for an authenticated user with RBAC roles.
-     *
-     * @param nickname Unique user identifier (will become the subject claim)
-     * @param roles    Collection of user roles (stored as a custom claim "roles")
-     * @return Compact JWT string
-     * @throws IllegalArgumentException if nickname is null/blank or roles collection is null/empty
-     */
+        * Generates a signed JWT for an authenticated user with RBAC roles.
+        * @param nickname Unique user identifier (will become the subject claim)
+        * @param roles    Collection of user roles (stored as a custom claim "roles")
+        * @return Compact JWT string
+        * @throws IllegalArgumentException if nickname is null/blank or roles collection is null/empty
+    **/
     public String generateToken(String nickname, Collection<String> roles) {
+        
         // Mandatory fields – no insecure defaults
         if (nickname == null || nickname.isBlank()) {
             throw new IllegalArgumentException("The nickname cannot be null or empty for token generation.");
         }
+
         // RBAC validation: a user must have at least one role
         if (roles == null || roles.isEmpty()) {
             throw new IllegalArgumentException("At least one role is required for token generation.");
@@ -114,14 +108,12 @@ public class JWTService {
     }
 
     /**
-     * Validates a JWT and returns its claims.
-     * Validation includes signature, expiration, issuer, and audience.
-     *
-     * @param token JWT string to validate
-     * @return Claims payload of the token
-     * @throws JwtExpiredException if the token has expired
-     * @throws JwtInvalidException if the token is invalid (signature, structure, or claims mismatch)
-     */
+        * Validates a JWT and returns its claims.
+        * @param token JWT string to validate
+        * @return Claims payload of the token
+        * @throws JwtExpiredException if the token has expired
+        * @throws JwtInvalidException if the token is invalid (signature, structure, or claims mismatch)
+    **/
     public Claims validateAndGetClaims(String token) {
         if (token == null || token.isBlank()) {
             throw new IllegalArgumentException("Empty or missing JWT token");
@@ -140,21 +132,19 @@ public class JWTService {
     }
 
     /**
-     * Extracts the user nickname (subject) from claims.
-     *
-     * @param claims Valid claims object (e.g., from validateAndGetClaims)
-     * @return The nickname stored in the subject
-     */
+        * Extracts the user nickname (subject) from claims.
+        * @param claims Valid claims object (e.g., from validateAndGetClaims)
+        * @return The nickname stored in the subject
+    **/
     public String extractNickname(Claims claims) {
         return claims.getSubject();
     }
     
     /**
-     * Extracts the collection of user roles from claims for RBAC checks.
-     *
-     * @param claims Valid claims object
-     * @return A list of roles stored in the "roles" claim
-     */
+        * Extracts the collection of user roles from claims for RBAC checks.
+        * @param claims Valid claims object
+        * @return A list of roles stored in the "roles" claim
+    **/
     @SuppressWarnings("unchecked")
     public List<String> extractRoles(Claims claims) {
         return claims.get("roles", List.class);

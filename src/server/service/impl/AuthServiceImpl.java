@@ -15,19 +15,35 @@ import java.util.Locale;
 
 public class AuthServiceImpl implements AuthService {
 
-    private final UserService userService;
-    private final JWTService jwtService;
+    private final UserService userService; // Dependency on UserService to retrieve user information
+    private final JWTService jwtService; // Dependency on JWTService to handle token generation and validation
 
+
+    /** 
+        * Constructor for AuthServiceImpl.
+        * @param userService The UserService instance to use for user operations.
+        * @param jwtService The JWTService instance to use for token operations.
+    **/
     public AuthServiceImpl(UserService userService, JWTService jwtService) {
         this.userService = userService;
         this.jwtService = jwtService;
     }
 
+    /** 
+        * Constructor for AuthServiceImpl.
+        * @param userService The UserService instance to use for user operations.
+        * @throws ServiceException If initialization fails.
+    **/
     public AuthServiceImpl(UserService userService) throws ServiceException {
         this.userService = userService;
         this.jwtService = loadJWTServiceFromEnv();
     }
 
+    /** 
+        * Default constructor for AuthServiceImpl.
+        * Initializes UserService and JWTService with default implementations and environment configuration.
+        * @throws ServiceException If initialization fails due to missing JWT configuration or other issues.
+    **/
     public AuthServiceImpl() throws ServiceException {
         try {
             this.userService = new UserServiceImpl();
@@ -37,6 +53,13 @@ public class AuthServiceImpl implements AuthService {
         }
     }
 
+    /** 
+        * Authenticates a user based on provided nickname and password.
+        * @param nickname The nickname of the user attempting to authenticate.
+        * @param password The password of the user attempting to authenticate.
+        * @return A LoginResult containing the authentication token, user details, roles, and admin status.
+        * @throws ServiceException If authentication fails due to invalid credentials or other issues.
+    **/
     @Override
     public LoginResult authenticateUser(String nickname, String password) throws ServiceException {
         System.err.println("=== AUTHENTICATE USER ===");
@@ -65,6 +88,12 @@ public class AuthServiceImpl implements AuthService {
         return new LoginResult(token, user, roles, isAdmin);
     }
 
+    /** 
+        * Retrieves the authentication session from a given token.
+        * @param token The JWT token to validate and extract session information from.
+        * @return An AuthenticationResult containing the user's nickname and roles if the token is valid.
+        * @throws ServiceException If the token is invalid or if identity verification fails.
+    **/
     @Override
     public AuthenticationResult getSessionFromToken(String token) throws ServiceException {
         try {
@@ -78,6 +107,13 @@ public class AuthServiceImpl implements AuthService {
         }
     }
 
+    /** 
+        * Authenticates user credentials.
+        * @param nickname The nickname of the user.
+        * @param password The password of the user.
+        * @return The authenticated UserDTO.
+        * @throws ServiceException If authentication fails.
+    **/
     private UserDTO authenticateCredentials(String nickname, String password) throws ServiceException {
         System.err.println("Checking credentials for: " + nickname);
         
@@ -104,6 +140,11 @@ public class AuthServiceImpl implements AuthService {
         return user;
     }
 
+    /** 
+        * Loads the JWT service configuration from environment variables.
+        * @return The configured JWTService instance.
+        * @throws IllegalArgumentException If the JWT_SECRET environment variable is not set.
+    **/
     private JWTService loadJWTServiceFromEnv() {
         String base64Secret = System.getenv("JWT_SECRET");
         if (base64Secret == null || base64Secret.isEmpty()) {

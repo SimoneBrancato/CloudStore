@@ -22,12 +22,26 @@ import java.util.*;
 
 public class CartServiceImpl implements CartService {
 
+    // DAOs and services used for cart operations
     private final ProductDAO productDAO;
+
+    // TransactionDAO for handling transaction persistence
     private final TransactionDAO transactionDAO;
+    
+    // Service for retrieving transaction history and calculating discounts
     private final TransactionService transactionService;
+
+    // Service for retrieving user information and categories
     private final UserService userService;
+
+    // Database connection instance for managing transactions and ensuring atomicity
     private final DatabaseConnection dbConnection;
 
+    /** 
+        * Constructor for CartServiceImpl.
+        * Initializes DAOs and services, and sets up the database connection.
+        * @throws ServiceException If initialization fails due to database connection issues or other problems.
+    **/
     public CartServiceImpl() throws ServiceException {
         try {
             DatabaseConnection dbConnection = DatabaseConnection.getInstance();
@@ -41,9 +55,15 @@ public class CartServiceImpl implements CartService {
         }
     }
 
+    /** 
+        * Retrieves the checkout context for a customer based on their cart items.
+        * @param customerName The name of the customer.
+        * @param items A map of product IDs to quantities.
+        * @return A map containing the checkout context.
+        * @throws ServiceException If an error occurs while retrieving the checkout context.
+     */
     @Override
     public Map<String, Object> getCheckoutContext(String customerName, Map<Integer, Integer> items) throws ServiceException {
-        // Normalizza la mappa per gestire chiavi String
         Map<Integer, Integer> normalizedItems = normalizeItemsMap(items);
         
         String customerCategory = userService.resolveCustomerCategory(customerName);
@@ -61,6 +81,12 @@ public class CartServiceImpl implements CartService {
         return context;
     }
 
+    /** 
+        * Processes a single order, ensuring atomicity and consistency.
+        * @param dto The transaction data transfer object.
+        * @return The processed transaction DTO.
+        * @throws ServiceException If an error occurs while processing the order.
+    **/
     @Override
     public TransactionDTO processSingleOrder(TransactionDTO dto) throws ServiceException {
         validateOrder(dto);
@@ -111,10 +137,18 @@ public class CartServiceImpl implements CartService {
         }
     }
 
+    /** 
+        * Processes a cart order, ensuring atomicity and consistency across multiple items.
+        * @param customerName The name of the customer placing the order.
+        * @param paymentMethod The payment method used for the order.
+        * @param city The city where the order is being placed.
+        * @param items A map of product IDs to quantities representing the cart contents.
+        * @return A map containing the results of processing the cart order, including transactions, totals, and discounts.
+        * @throws ServiceException If an error occurs while processing the cart order.
+    **/
     @Override
     public Map<String, Object> processCartOrder(String customerName, String paymentMethod,
                                                 String city, Map<Integer, Integer> items) throws ServiceException {
-        // Normalizza la mappa per gestire chiavi String
         Map<Integer, Integer> normalizedItems = normalizeItemsMap(items);
         
         validateCartOrder(customerName, normalizedItems);
@@ -183,9 +217,11 @@ public class CartServiceImpl implements CartService {
         }
     }
 
-    /**
-     * Normalizza la mappa degli items per gestire sia Integer che String come chiavi
-     */
+    /** 
+        * Normalizes the items map by ensuring all keys and values are valid integers and filtering out invalid entries.
+        * @param items The original map of product IDs to quantities.
+        * @return A normalized map containing only valid product IDs and positive quantities.
+    **/
     private Map<Integer, Integer> normalizeItemsMap(Map<Integer, Integer> items) {
         Map<Integer, Integer> normalized = new HashMap<>();
         if (items == null) {
@@ -200,7 +236,6 @@ public class CartServiceImpl implements CartService {
                     normalized.put(key, value);
                 }
             } catch (ClassCastException e) {
-                // Se la chiave è una String, prova a convertirla
                 try {
                     Object rawKey = entry.getKey();
                     if (rawKey instanceof String) {
@@ -218,6 +253,12 @@ public class CartServiceImpl implements CartService {
         return normalized;
     }
 
+    /** 
+        * Calculates the average discount for the cart based on recent transactions of the products in the cart.
+        * @param items A map of product IDs to quantities representing the cart contents.
+        * @return The calculated average discount for the cart, normalized between 0 and 1.
+        * @throws ServiceException If an error occurs while retrieving transaction history or calculating discounts.
+    **/
     private float calculateDiscountForCart(Map<Integer, Integer> items) throws ServiceException {
         if (items == null || items.isEmpty()) {
             return 0.0f;
@@ -255,6 +296,12 @@ public class CartServiceImpl implements CartService {
                 : 0.0f;
     }
 
+    /** 
+        * Retrieves the size of the discount source for the cart based on recent transactions of the products in the cart.
+        * @param items A map of product IDs to quantities representing the cart contents.
+        * @return The total number of recent transactions across all products in the cart, which serves as the sample size for discount calculation.
+        * @throws ServiceException If an error occurs while retrieving transaction history.
+    **/
     private int getDiscountSourceSize(Map<Integer, Integer> items) throws ServiceException {
         if (items == null || items.isEmpty()) {
             return 0;
@@ -270,6 +317,19 @@ public class CartServiceImpl implements CartService {
         return totalSize;
     }
 
+    /** 
+        * Creates a TransactionDTO instance based on the provided parameters.
+        * @param customerName The name of the customer.
+        * @param paymentMethod The payment method used.
+        * @param city The city of the customer.
+        * @param customerCategory The category of the customer.
+        * @param discount The discount applied.
+        * @param now The current date and time.
+        * @param product The product for which the transaction is being created.
+        * @param quantity The quantity of the product.
+        * @param lineTotal The total cost for the line item.
+        * @return A new TransactionDTO instance initialized with the provided values.
+    **/
     private TransactionDTO createTransactionDTO(String customerName, String paymentMethod, String city,
                                                String customerCategory, float discount, LocalDateTime now,
                                                Product product, int quantity, double lineTotal) {
@@ -288,7 +348,12 @@ public class CartServiceImpl implements CartService {
                                             product.price(), product.stock()));
         return dto;
     }
-
+    
+    /** 
+        * Validates the transaction data transfer object for a single order.
+        * @param dto The TransactionDTO to validate.
+        * @throws ServiceException If the DTO is invalid, such as missing product details, non-positive item quantity, or empty customer name.
+    **/
     private void validateOrder(TransactionDTO dto) throws ServiceException {
         if (dto.getProductDetails() == null) {
             throw new ServiceException("Transaction must specify a product");
@@ -301,6 +366,12 @@ public class CartServiceImpl implements CartService {
         }
     }
 
+    /** 
+        * Validates the cart order details before processing.
+        * @param customerName The name of the customer placing the order.
+        * @param items A map of product IDs to quantities representing the cart contents.
+        * @throws ServiceException If the customer name is empty, the cart is empty, or any item has a non-positive quantity.
+    **/
     private void validateCartOrder(String customerName, Map<Integer, Integer> items) throws ServiceException {
         if (customerName == null || customerName.isBlank()) {
             throw new ServiceException("Customer name cannot be empty");
