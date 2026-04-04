@@ -1,4 +1,4 @@
-package com.cloudstore.server.model.entities;
+package model.entities;
 
 import java.time.LocalDateTime;
 

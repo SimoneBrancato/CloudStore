@@ -1,8 +1,8 @@
-package com.cloudstore.server.service.security;
+package service.security;
 
-import com.cloudstore.server.model.dto.auth.LoginResult;
-import com.cloudstore.server.model.dto.auth.AuthenticationResult;
-import com.cloudstore.server.service.exception.ServiceException;
+import model.dto.auth.LoginResult;
+import model.dto.auth.AuthenticationResult;
+import service.exception.ServiceException;
 
 public class SecurityContext {
     

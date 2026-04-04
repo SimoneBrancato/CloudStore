@@ -1,6 +1,6 @@
-package com.cloudstore.server.model.dto.auth;
+package model.dto.auth;
 
-import com.cloudstore.server.model.dto.UserDTO;
+import model.dto.UserDTO;
 import java.util.Collections;
 import java.util.List;
 

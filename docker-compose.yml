@@ -17,7 +17,7 @@ services:
 
   server:
     build:
-      context: ./src/main/java/com/cloudstore
+      context: ./src/main/java/com/cloudstore/server
       dockerfile: Dockerfile
     env_file:
       - .env

@@ -1,12 +1,12 @@
-package com.cloudstore.server.service.impl;
+package service.impl;
 
-import com.cloudstore.server.dao.impl.PermissionDAOImpl;
-import com.cloudstore.server.dao.interfaces.PermissionDAO;
-import com.cloudstore.server.model.dto.PermissionDTO;
-import com.cloudstore.server.model.entities.Permission;
-import com.cloudstore.server.service.exception.ServiceException;
-import com.cloudstore.server.service.interfaces.PermissionService;
-import com.cloudstore.server.service.mapper.DTOMapper;
+import dao.impl.PermissionDAOImpl;
+import dao.interfaces.PermissionDAO;
+import model.dto.PermissionDTO;
+import model.entities.Permission;
+import service.exception.ServiceException;
+import service.interfaces.PermissionService;
+import service.mapper.DTOMapper;
 
 import java.sql.SQLException;
 import java.util.List;

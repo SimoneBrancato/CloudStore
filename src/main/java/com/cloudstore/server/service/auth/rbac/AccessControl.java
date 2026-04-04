@@ -1,11 +1,11 @@
-package com.cloudstore.server.service.auth.rbac;
+package service.auth.rbac;
 
-import com.cloudstore.server.model.dto.UserDTO;
-import com.cloudstore.server.model.dto.auth.AuthenticationResult;
-import com.cloudstore.server.model.entities.Role;
-import com.cloudstore.server.service.exception.ServiceException;
-import com.cloudstore.server.service.interfaces.AuthService;
-import com.cloudstore.server.service.interfaces.UserService;
+import model.dto.UserDTO;
+import model.dto.auth.AuthenticationResult;
+import model.entities.Role;
+import service.exception.ServiceException;
+import service.interfaces.AuthService;
+import service.interfaces.UserService;
 
 import java.util.Optional;
 

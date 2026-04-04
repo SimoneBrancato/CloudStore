@@ -1,8 +1,8 @@
-package com.cloudstore.server.dao.impl;
+package dao.impl;
 
-import com.cloudstore.server.dao.interfaces.ProductDAO;
-import com.cloudstore.server.model.entities.Product;
-import com.cloudstore.server.utils.DatabaseConnection;
+import dao.interfaces.ProductDAO;
+import model.entities.Product;
+import utils.DatabaseConnection;
 
 import java.sql.*;
 import java.util.ArrayList;

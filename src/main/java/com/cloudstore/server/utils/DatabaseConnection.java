@@ -1,4 +1,4 @@
-package com.cloudstore.server.utils;
+package utils;
 
 import java.sql.*;
 

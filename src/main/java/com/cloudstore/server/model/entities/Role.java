@@ -1,4 +1,4 @@
-package com.cloudstore.server.model.entities;
+package model.entities;
 
 public enum Role {
     CUSTOMER(1),

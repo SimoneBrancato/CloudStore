@@ -1,12 +1,12 @@
-package com.cloudstore.server.service.impl;
+package service.impl;
 
-import com.cloudstore.server.dao.impl.ProductDAOImpl;
-import com.cloudstore.server.dao.interfaces.ProductDAO;
-import com.cloudstore.server.model.dto.ProductDTO;
-import com.cloudstore.server.model.entities.Product;
-import com.cloudstore.server.service.exception.ServiceException;
-import com.cloudstore.server.service.interfaces.ProductService;
-import com.cloudstore.server.service.mapper.DTOMapper;
+import dao.impl.ProductDAOImpl;
+import dao.interfaces.ProductDAO;
+import model.dto.ProductDTO;
+import model.entities.Product;
+import service.exception.ServiceException;
+import service.interfaces.ProductService;
+import service.mapper.DTOMapper;
 
 import java.sql.SQLException;
 import java.util.List;

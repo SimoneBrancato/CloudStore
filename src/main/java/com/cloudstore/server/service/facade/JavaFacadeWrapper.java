@@ -1,19 +1,27 @@
-package com.cloudstore.server.service.facade;
+package service.facade;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.cloudstore.server.service.exception.ServiceException;
-import com.cloudstore.server.service.security.SecurityContext;
-import com.cloudstore.server.model.dto.auth.AuthenticationResult;
+import service.exception.ServiceException;
+import service.security.SecurityContext;
+import model.dto.auth.AuthenticationResult;
 import com.sun.net.httpserver.HttpServer;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpExchange;
 
 import java.net.InetSocketAddress;
-import java.io.*;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.BufferedReader;
 import java.lang.reflect.Method;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Executors;
 
 

@@ -1,8 +1,8 @@
-package com.cloudstore.server.service.interfaces;
+package service.interfaces;
 
-import com.cloudstore.server.model.dto.auth.LoginResult;
-import com.cloudstore.server.model.dto.auth.AuthenticationResult;
-import com.cloudstore.server.service.exception.ServiceException;
+import model.dto.auth.LoginResult;
+import model.dto.auth.AuthenticationResult;
+import service.exception.ServiceException;
 
 public interface AuthService {
 

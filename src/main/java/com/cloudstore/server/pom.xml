@@ -60,7 +60,7 @@
 
 
     <build>
-        <sourceDirectory>main/java</sourceDirectory>
+        <sourceDirectory>.</sourceDirectory>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

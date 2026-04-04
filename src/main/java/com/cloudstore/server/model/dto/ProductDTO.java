@@ -1,4 +1,4 @@
-package com.cloudstore.server.model.dto;
+package model.dto;
 
 public class ProductDTO {
     private int id; // The unique identifier for the product

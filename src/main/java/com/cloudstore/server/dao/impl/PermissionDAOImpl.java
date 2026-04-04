@@ -1,8 +1,8 @@
-package com.cloudstore.server.dao.impl;
+package dao.impl;
 
-import com.cloudstore.server.dao.interfaces.PermissionDAO;
-import com.cloudstore.server.model.entities.Permission;
-import com.cloudstore.server.utils.DatabaseConnection;
+import dao.interfaces.PermissionDAO;
+import model.entities.Permission;
+import utils.DatabaseConnection;
 
 import java.sql.*;
 import java.util.ArrayList;

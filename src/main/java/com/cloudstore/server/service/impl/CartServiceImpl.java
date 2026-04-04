@@ -1,19 +1,19 @@
-package com.cloudstore.server.service.impl;
+package service.impl;
 
-import com.cloudstore.server.dao.impl.ProductDAOImpl;
-import com.cloudstore.server.dao.impl.TransactionDAOImpl;
-import com.cloudstore.server.dao.interfaces.ProductDAO;
-import com.cloudstore.server.dao.interfaces.TransactionDAO;
-import com.cloudstore.server.model.dto.ProductDTO;
-import com.cloudstore.server.model.dto.TransactionDTO;
-import com.cloudstore.server.model.entities.Product;
-import com.cloudstore.server.model.entities.Transaction;
-import com.cloudstore.server.service.exception.ServiceException;
-import com.cloudstore.server.service.interfaces.CartService;
-import com.cloudstore.server.service.interfaces.TransactionService;
-import com.cloudstore.server.service.interfaces.UserService;
-import com.cloudstore.server.service.mapper.DTOMapper;
-import com.cloudstore.server.utils.DatabaseConnection;
+import dao.impl.ProductDAOImpl;
+import dao.impl.TransactionDAOImpl;
+import dao.interfaces.ProductDAO;
+import dao.interfaces.TransactionDAO;
+import model.dto.ProductDTO;
+import model.dto.TransactionDTO;
+import model.entities.Product;
+import model.entities.Transaction;
+import service.exception.ServiceException;
+import service.interfaces.CartService;
+import service.interfaces.TransactionService;
+import service.interfaces.UserService;
+import service.mapper.DTOMapper;
+import utils.DatabaseConnection;
 
 import java.sql.Connection;
 import java.sql.SQLException;

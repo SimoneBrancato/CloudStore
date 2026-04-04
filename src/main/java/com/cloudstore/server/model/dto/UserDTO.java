@@ -1,4 +1,4 @@
-package com.cloudstore.server.model.dto;
+package model.dto;
 
 public class UserDTO {
     private String nickname; // The unique nickname of the user

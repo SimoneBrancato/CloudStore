@@ -1,6 +1,6 @@
-package com.cloudstore.server.service.interfaces;
+package service.interfaces;
 
-import com.cloudstore.server.service.exception.ServiceException;
+import service.exception.ServiceException;
 
 import java.util.Map;
 

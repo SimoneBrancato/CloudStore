@@ -1,4 +1,4 @@
-package com.cloudstore.server.service.auth;
+package service.auth;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
@@ -10,8 +10,8 @@ import io.jsonwebtoken.security.Keys;
 
 import javax.crypto.SecretKey;
 
-import com.cloudstore.server.service.auth.exception.JwtExpiredException;
-import com.cloudstore.server.service.auth.exception.JwtInvalidException;
+import service.auth.exception.JwtExpiredException;
+import service.auth.exception.JwtInvalidException;
 
 import java.util.Collection;
 import java.util.Date;

@@ -1,13 +1,13 @@
-package com.cloudstore.server.service.facade;
+package service.facade;
 
-import com.cloudstore.server.model.dto.*;
-import com.cloudstore.server.model.dto.auth.AuthenticationResult;
-import com.cloudstore.server.model.dto.auth.LoginResult;
-import com.cloudstore.server.service.exception.ServiceException;
-import com.cloudstore.server.service.interfaces.*;
-import com.cloudstore.server.service.auth.rbac.AccessControl;
-import com.cloudstore.server.service.impl.*;
-import com.cloudstore.server.model.entities.Role;
+import model.dto.*;
+import model.dto.auth.AuthenticationResult;
+import model.dto.auth.LoginResult;
+import service.exception.ServiceException;
+import service.interfaces.*;
+import service.auth.rbac.AccessControl;
+import service.impl.*;
+import model.entities.Role;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -26,25 +26,6 @@ public class CloudStoreFacade {
     private final DashboardService dashboardService;        // Service for providing dashboard statistics and user profiles
     private final AccessControl accessControl;              // Service for role-based access control
 
-    // Constructor for CloudStoreFacade with dependency injection
-    public CloudStoreFacade(PermissionService permissionService,
-                            ProductService productService,
-                            UserService userService,
-                            TransactionService transactionService,
-                            AuthService authService,
-                            CartService cartService,
-                            DashboardService dashboardService,
-                            AccessControl accessControl) {
-        this.permissionService = permissionService;
-        this.productService = productService;
-        this.userService = userService;
-        this.transactionService = transactionService;
-        this.authService = authService;
-        this.cartService = cartService;
-        this.dashboardService = dashboardService;
-        this.accessControl = accessControl;
-    }
-
     // Default constructor that initializes all services with their default implementations
     public CloudStoreFacade() throws ServiceException {
         try {
@@ -61,7 +42,7 @@ public class CloudStoreFacade {
         }
     }
 
-    /** TEMPLATE METHODS */
+    /** ROLE BASED METHODS */
 
     @FunctionalInterface
     public interface RoleBasedInterface<T> {
@@ -92,155 +73,235 @@ public class CloudStoreFacade {
         throw new ServiceException("Access denied: you can only access your own resources");
     }
 
-    // PERMISSION 
-    public Optional<PermissionDTO> findPermissionById(int id) throws ServiceException {
-        return permissionService.findById(id);
+    // -------------------------------------------------------------------------
+    // Admin only
+    // -------------------------------------------------------------------------
+
+    public Optional<PermissionDTO> findPermissionById(String token, int id) throws ServiceException {
+        return adminMethod(token, () -> permissionService.findById(id));
     }
 
-
-    public Optional<PermissionDTO> findPermissionByCategory(String category) throws ServiceException {
-        return permissionService.findByCategory(category);
+    public Optional<PermissionDTO> findPermissionByCategory(String token, String category) throws ServiceException {
+        return adminMethod(token, () -> permissionService.findByCategory(category));
     }
 
-
-    public List<PermissionDTO> getAllPermissions() throws ServiceException {
-        return permissionService.findAll();
+    public List<PermissionDTO> getAllPermissions(String token) throws ServiceException {
+        return adminMethod(token, () -> permissionService.findAll());
     }
 
-
-    public PermissionDTO savePermission(PermissionDTO dto) throws ServiceException {
-        return permissionService.save(dto);
+    public PermissionDTO savePermission(String token, PermissionDTO dto) throws ServiceException {
+        return adminMethod(token, () -> permissionService.save(dto));
     }
 
-
-    public boolean deletePermission(int id) throws ServiceException {
-        return permissionService.delete(id);
+    public boolean deletePermission(String token, int id) throws ServiceException {
+        return adminMethod(token, () -> permissionService.delete(id));
     }
 
-
-    public boolean permissionExists(int id) throws ServiceException {
-        return permissionService.exists(id);
+    public int countPermissions(String token) throws ServiceException {
+        return adminMethod(token, () -> permissionService.count());
     }
 
-
-    public int countPermissions() throws ServiceException {
-        return permissionService.count();
+    public ProductDTO saveProduct(String token, ProductDTO dto) throws ServiceException {
+        return adminMethod(token, () -> productService.save(dto));
     }
 
+    public boolean deleteProduct(String token, int id) throws ServiceException {
+        return adminMethod(token, () -> productService.delete(id));
+    }
 
-    // PRODUCT 
+    public boolean updateProductStock(String token, int productId, int newQuantity) throws ServiceException {
+        return adminMethod(token, () -> productService.updateStock(productId, newQuantity));
+    }
+
+    public List<ProductDTO> findLowStockProducts(String token, int threshold) throws ServiceException {
+        return adminMethod(token, () -> productService.findLowStockProducts(threshold));
+    }
+
+    public int countProducts(String token) throws ServiceException {
+        return adminMethod(token, () -> productService.count());
+    }
+
+    public List<UserDTO> findUsersByPermission(String token, int permissionId) throws ServiceException {
+        return adminMethod(token, () -> userService.findByPermission(permissionId));
+    }
+
+    public List<UserDTO> getAllUsers(String token) throws ServiceException {
+        return adminMethod(token, () -> userService.findAll());
+    }
+
+    public boolean deleteUser(String token, String nickname) throws ServiceException {
+        return adminMethod(token, () -> userService.delete(nickname));
+    }
+
+    public boolean updateUserPassword(String token, String nickname, String newPassword) throws ServiceException {
+        return adminMethod(token, () -> userService.updatePassword(nickname, newPassword));
+    }
+
+    public boolean updateUserPermission(String token, String nickname, int newPermissionId) throws ServiceException {
+        return adminMethod(token, () -> userService.updatePermission(nickname, newPermissionId));
+    }
+
+    public int countUsers(String token) throws ServiceException {
+        return adminMethod(token, () -> userService.count());
+    }
+
+    public Optional<TransactionDTO> findTransactionById(String token, long id) throws ServiceException {
+        return adminMethod(token, () -> transactionService.findById(id));
+    }
+
+    public List<TransactionDTO> findTransactionsByProduct(String token, int productId) throws ServiceException {
+        return adminMethod(token, () -> transactionService.findByProduct(productId));
+    }
+
+    public List<TransactionDTO> findRecentTransactionsByProduct(String token, int productId, int limit) throws ServiceException {
+        return adminMethod(token, () -> transactionService.findRecentByProduct(productId, limit));
+    }
+
+    public List<TransactionDTO> findTransactionsByDateRange(String token, LocalDateTime start, LocalDateTime end) throws ServiceException {
+        return adminMethod(token, () -> transactionService.findByDateRange(start, end));
+    }
+
+    public List<TransactionDTO> findTransactionsByPaymentMethod(String token, String paymentMethod) throws ServiceException {
+        return adminMethod(token, () -> transactionService.findByPaymentMethod(paymentMethod));
+    }
+
+    public List<TransactionDTO> findTransactionsByCity(String token, String city) throws ServiceException {
+        return adminMethod(token, () -> transactionService.findByCity(city));
+    }
+
+    public List<TransactionDTO> getAllTransactions(String token) throws ServiceException {
+        return adminMethod(token, () -> transactionService.findAll());
+    }
+
+    public TransactionDTO saveTransaction(String token, TransactionDTO dto) throws ServiceException {
+        return adminMethod(token, () -> transactionService.save(dto));
+    }
+
+    public boolean deleteTransaction(String token, long id) throws ServiceException {
+        return adminMethod(token, () -> transactionService.delete(id));
+    }
+
+    public double calculateTotalSales(String token, LocalDateTime start, LocalDateTime end) throws ServiceException {
+        return adminMethod(token, () -> transactionService.calculateTotalSales(start, end));
+    }
+
+    public int countTransactionsByDateRange(String token, LocalDateTime start, LocalDateTime end) throws ServiceException {
+        return adminMethod(token, () -> transactionService.countByDateRange(start, end));
+    }
+
+    public List<TransactionDTO> findRecentTransactions(String token, int limit) throws ServiceException {
+        return adminMethod(token, () -> transactionService.findRecentTransactions(limit));
+    }
+
+    public int countTransactions(String token) throws ServiceException {
+        return adminMethod(token, () -> transactionService.count());
+    }
+
+    public Map<String, Object> getDashboardStats(String token) throws ServiceException {
+        return adminMethod(token, () -> dashboardService.getDashboardStats());
+    }
+
+    // -------------------------------------------------------------------------
+    // PRODUCT
+    // -------------------------------------------------------------------------
+
     public Optional<ProductDTO> findProductById(int id) throws ServiceException {
         return productService.findById(id);
     }
-
 
     public List<ProductDTO> findProductsByName(String name) throws ServiceException {
         return productService.findByName(name);
     }
 
-
     public List<ProductDTO> findProductsByCategory(String category) throws ServiceException {
         return productService.findByCategory(category);
     }
-
 
     public List<ProductDTO> getAllProducts() throws ServiceException {
         return productService.findAll();
     }
 
-
     public List<String> getAllProductCategories() throws ServiceException {
         return productService.findAllCategories();
     }
-
-
-    public ProductDTO saveProduct(ProductDTO dto) throws ServiceException {
-        return productService.save(dto);
-    }
-
-
-    public boolean deleteProduct(int id) throws ServiceException {
-        return productService.delete(id);
-    }
-
-
-    public boolean updateProductStock(int productId, int newQuantity) throws ServiceException {
-        return productService.updateStock(productId, newQuantity);
-    }
-
-
-    public List<ProductDTO> findLowStockProducts(int threshold) throws ServiceException {
-        return productService.findLowStockProducts(threshold);
-    }
-
 
     public boolean productExists(int id) throws ServiceException {
         return productService.exists(id);
     }
 
+    // -------------------------------------------------------------------------
+    // USER — registration public, reads/writes admin, self-service customer
+    // -------------------------------------------------------------------------
 
-    public int countProducts() throws ServiceException {
-        return productService.count();
-    }
-
-
-    // USER 
     public Optional<UserDTO> findUserByNickname(String nickname) throws ServiceException {
         return userService.findByNickname(nickname);
     }
-
 
     public Optional<UserDTO> findUserByEmail(String email) throws ServiceException {
         return userService.findByEmail(email);
     }
 
-
-    public List<UserDTO> findUsersByPermission(int permissionId) throws ServiceException {
-        return userService.findByPermission(permissionId);
-    }
-
-
-    public List<UserDTO> getAllUsers() throws ServiceException {
-        return userService.findAll();
-    }
-
-
     public UserDTO registerUser(UserDTO dto) throws ServiceException {
         return userService.register(dto);
     }
-
-
-    public boolean deleteUser(String nickname) throws ServiceException {
-        return userService.delete(nickname);
-    }
-
-
-    public boolean updateUserPassword(String nickname, String newPassword) throws ServiceException {
-        return userService.updatePassword(nickname, newPassword);
-    }
-
-
-    public boolean updateUserPermission(String nickname, int newPermissionId) throws ServiceException {
-        return userService.updatePermission(nickname, newPermissionId);
-    }
-
 
     public boolean userExists(String nickname) throws ServiceException {
         return userService.exists(nickname);
     }
 
-
-    public int countUsers() throws ServiceException {
-        return userService.count();
-    }
-
-
     public String resolveCustomerCategory(String customerName) throws ServiceException {
         return userService.resolveCustomerCategory(customerName);
     }
 
+    // -------------------------------------------------------------------------
+    // Customer level operations
+    // -------------------------------------------------------------------------
 
-    // AUTH 
+    public List<TransactionDTO> findTransactionsByCustomer(String token, String customerName) throws ServiceException {
+        return customerMethod(token, customerName, () -> transactionService.findByCustomer(customerName));
+    }
+
+    public Map<String, Object> getCheckoutContext(String token, String customerName, Map<Integer, Integer> items) throws ServiceException {
+        return customerMethod(token, customerName, () -> cartService.getCheckoutContext(customerName, items));
+    }
+
+    public TransactionDTO processOrder(String token, String customerName, TransactionDTO dto) throws ServiceException {
+        return customerMethod(token, customerName, () -> cartService.processSingleOrder(dto));
+    }
+
+    public Map<String, Object> processCartOrder(String token, String customerName, String paymentMethod,
+                                                String city, Map<Integer, Integer> items) throws ServiceException {
+        return customerMethod(token, customerName, () -> cartService.processCartOrder(customerName, paymentMethod, city, items));
+    }
+
+    public Map<String, Object> getUserProfile(String token, String nickname) throws ServiceException {
+        return customerMethod(token, nickname, () -> dashboardService.getUserProfile(nickname));
+    }
+
+    // -------------------------------------------------------------------------
+    // UTILITIES
+    // -------------------------------------------------------------------------
+
+    public int getFirstAvailablePermissionId(String token) throws ServiceException {
+        return adminMethod(token, () -> permissionService.findAll().stream()
+                .findFirst()
+                .orElseThrow(() -> new ServiceException("No permission found"))
+                .getId());
+    }
+
+    public boolean permissionExists(int id) throws ServiceException {
+        return permissionService.exists(id);
+    }
+
+    public boolean transactionExists(long id) throws ServiceException {
+        return transactionService.exists(id);
+    }
+
+
+    // -------------------------------------------------------------------------
+    // AUTH — public
+    // -------------------------------------------------------------------------
+
     public LoginResult authenticateUser(String nickname, String password) throws ServiceException {
         return authService.authenticateUser(nickname, password);
     }
@@ -248,116 +309,4 @@ public class CloudStoreFacade {
     public AuthenticationResult getSessionFromToken(String token) throws ServiceException {
         return authService.getSessionFromToken(token);
     }
-
-    // TRANSACTION 
-    public Optional<TransactionDTO> findTransactionById(long id) throws ServiceException {
-        return transactionService.findById(id);
-    }
-
-
-    public List<TransactionDTO> findTransactionsByCustomer(String customerName) throws ServiceException {
-        return transactionService.findByCustomer(customerName);
-    }
-
-
-    public List<TransactionDTO> findTransactionsByProduct(int productId) throws ServiceException {
-        return transactionService.findByProduct(productId);
-    }
-
-
-    public List<TransactionDTO> findRecentTransactionsByProduct(int productId, int limit) throws ServiceException {
-        return transactionService.findRecentByProduct(productId, limit);
-    }
-
-
-    public List<TransactionDTO> findTransactionsByDateRange(LocalDateTime start, LocalDateTime end) throws ServiceException {
-        return transactionService.findByDateRange(start, end);
-    }
-
-
-    public List<TransactionDTO> findTransactionsByPaymentMethod(String paymentMethod) throws ServiceException {
-        return transactionService.findByPaymentMethod(paymentMethod);
-    }
-
-
-    public List<TransactionDTO> findTransactionsByCity(String city) throws ServiceException {
-        return transactionService.findByCity(city);
-    }
-
-
-    public List<TransactionDTO> getAllTransactions() throws ServiceException {
-        return transactionService.findAll();
-    }
-
-
-    public TransactionDTO saveTransaction(TransactionDTO dto) throws ServiceException {
-        return transactionService.save(dto);
-    }
-
-
-    public boolean deleteTransaction(long id) throws ServiceException {
-        return transactionService.delete(id);
-    }
-
-
-    public double calculateTotalSales(LocalDateTime start, LocalDateTime end) throws ServiceException {
-        return transactionService.calculateTotalSales(start, end);
-    }
-
-
-    public int countTransactionsByDateRange(LocalDateTime start, LocalDateTime end) throws ServiceException {
-        return transactionService.countByDateRange(start, end);
-    }
-
-
-    public List<TransactionDTO> findRecentTransactions(int limit) throws ServiceException {
-        return transactionService.findRecentTransactions(limit);
-    }
-
-
-    public boolean transactionExists(long id) throws ServiceException {
-        return transactionService.exists(id);
-    }
-
-
-    public int countTransactions() throws ServiceException {
-        return transactionService.count();
-    }
-
-
-    // CART 
-    public Map<String, Object> getCheckoutContext(String customerName, Map<Integer, Integer> items) throws ServiceException {
-        return cartService.getCheckoutContext(customerName, items);
-    }
-
-
-    public TransactionDTO processOrder(TransactionDTO dto) throws ServiceException {
-        return cartService.processSingleOrder(dto);
-    }
-
-
-    public Map<String, Object> processCartOrder(String customerName, String paymentMethod, 
-                                                String city, Map<Integer, Integer> items) throws ServiceException {
-        return cartService.processCartOrder(customerName, paymentMethod, city, items);
-    }
-
-
-    // DASHBOARD 
-    public Map<String, Object> getDashboardStats() throws ServiceException {
-        return dashboardService.getDashboardStats();
-    }
-
-
-    public Map<String, Object> getUserProfile(String nickname) throws ServiceException {
-        return dashboardService.getUserProfile(nickname);
-    }
-
-    
-    public int getFirstAvailablePermissionId() throws ServiceException {
-        return permissionService.findAll().stream()
-                .findFirst()
-                .orElseThrow(() -> new ServiceException("No permission found"))
-                .getId();
-    }
-
 }
