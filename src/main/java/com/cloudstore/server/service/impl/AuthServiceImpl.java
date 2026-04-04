@@ -1,12 +1,12 @@
-package service.impl;
+package com.cloudstore.server.service.impl;
 
-import model.dto.UserDTO;
-import model.dto.auth.AuthenticationResult;
-import model.dto.auth.LoginResult;
-import service.auth.JWTService;
-import service.exception.ServiceException;
-import service.interfaces.AuthService;
-import service.interfaces.UserService;
+import com.cloudstore.server.model.dto.UserDTO;
+import com.cloudstore.server.model.dto.auth.AuthenticationResult;
+import com.cloudstore.server.model.dto.auth.LoginResult;
+import com.cloudstore.server.service.auth.JWTService;
+import com.cloudstore.server.service.exception.ServiceException;
+import com.cloudstore.server.service.interfaces.AuthService;
+import com.cloudstore.server.service.interfaces.UserService;
 import io.jsonwebtoken.Claims;
 
 import java.util.ArrayList;

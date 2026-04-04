@@ -1,7 +1,7 @@
-package service.interfaces;
+package com.cloudstore.server.service.interfaces;
 
-import model.dto.ProductDTO;
-import service.exception.ServiceException;
+import com.cloudstore.server.model.dto.ProductDTO;
+import com.cloudstore.server.service.exception.ServiceException;
 
 import java.util.List;
 import java.util.Optional;

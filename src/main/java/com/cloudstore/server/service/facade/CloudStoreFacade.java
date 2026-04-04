@@ -1,13 +1,13 @@
-package service.facade;
+package com.cloudstore.server.service.facade;
 
-import model.dto.*;
-import model.dto.auth.AuthenticationResult;
-import model.dto.auth.LoginResult;
-import service.exception.ServiceException;
-import service.interfaces.*;
-import service.auth.rbac.AccessControl;
-import service.impl.*;
-import model.entities.Role;
+import com.cloudstore.server.model.dto.*;
+import com.cloudstore.server.model.dto.auth.AuthenticationResult;
+import com.cloudstore.server.model.dto.auth.LoginResult;
+import com.cloudstore.server.service.exception.ServiceException;
+import com.cloudstore.server.service.interfaces.*;
+import com.cloudstore.server.service.auth.rbac.AccessControl;
+import com.cloudstore.server.service.impl.*;
+import com.cloudstore.server.model.entities.Role;
 
 import java.time.LocalDateTime;
 import java.util.List;

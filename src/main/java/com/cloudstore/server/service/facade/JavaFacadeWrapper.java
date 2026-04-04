@@ -1,18 +1,17 @@
-package service.facade;
+package com.cloudstore.server.service.facade;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.fasterxml.jackson.core.type.TypeReference;
-import service.exception.ServiceException;
-import service.security.SecurityContext;
-import model.dto.auth.AuthenticationResult;
+import com.cloudstore.server.service.exception.ServiceException;
+import com.cloudstore.server.service.security.SecurityContext;
+import com.cloudstore.server.model.dto.auth.AuthenticationResult;
 import com.sun.net.httpserver.HttpServer;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpExchange;
 
 import java.net.InetSocketAddress;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.BufferedReader;
@@ -106,9 +105,10 @@ public class JavaFacadeWrapper {
                 List<?> argsList = (List<?>) request.getOrDefault("args", new ArrayList<>());
                 Object[] argsArray = argsList.toArray();
                 
+                String token = null;
                 String authHeader = exchange.getRequestHeaders().getFirst("Authorization");
                 if (authHeader != null && authHeader.startsWith("Bearer ")) {
-                    String token = authHeader.substring(7);
+                    token = authHeader.substring(7);
                     try {
                         AuthenticationResult session = FACADE.getSessionFromToken(token);
                         SecurityContext.set(session);
@@ -120,7 +120,7 @@ public class JavaFacadeWrapper {
                 }
                 
                 System.err.println("Invoking: " + methodName + " with args: " + Arrays.toString(argsArray));
-                Object result = invokeMethod(methodName, argsArray);
+                Object result = invokeMethod(methodName, argsArray, token);
                 System.err.println("Result: " + result);
                 
                 Map<String, Object> response = new HashMap<>();
@@ -170,17 +170,40 @@ public class JavaFacadeWrapper {
          * Invokes the specified method on the CloudStoreFacade with the given arguments.
          * @param methodName The name of the method to invoke.
          * @param args The arguments to pass to the method.
+         * @param token The authentication token (may be null).
          * @return The result of the method invocation.
          * @throws Exception If an error occurs while invoking the method.
         **/
-        private static Object invokeMethod(String methodName, Object[] args) throws Exception {
+        private static Object invokeMethod(String methodName, Object[] args, String token) throws Exception {
             Method[] methods = CloudStoreFacade.class.getMethods();
             Method targetMethod = null;
             
+            // First, try to find a method that matches args.length
             for (Method m : methods) {
                 if (m.getName().equals(methodName) && m.getParameterCount() == args.length) {
                     targetMethod = m;
                     break;
+                }
+            }
+            
+            // If not found and we have a token, try to find a method that expects token as first param
+            if (targetMethod == null && token != null) {
+                for (Method m : methods) {
+                    if (m.getName().equals(methodName) && m.getParameterCount() == args.length + 1) {
+                        Class<?>[] paramTypes = m.getParameterTypes();
+                        if (paramTypes.length > 0 && paramTypes[0].equals(String.class)) {
+                            targetMethod = m;
+                            break;
+                        }
+                    }
+                }
+                
+                // If found, prepend token to args
+                if (targetMethod != null) {
+                    Object[] newArgs = new Object[args.length + 1];
+                    newArgs[0] = token;
+                    System.arraycopy(args, 0, newArgs, 1, args.length);
+                    args = newArgs;
                 }
             }
             

@@ -1,4 +1,4 @@
-package model.dto;
+package com.cloudstore.server.model.dto;
 
 import java.time.LocalDateTime;
 

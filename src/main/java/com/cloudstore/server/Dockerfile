@@ -19,4 +19,4 @@ COPY --from=builder /build/target/dependency /app/dependency
 
 EXPOSE 9999
 
-CMD ["java", "-cp", "/app/classes:/app/dependency/*", "service.facade.JavaFacadeWrapper"]
+CMD ["java", "-cp", "/app/classes:/app/dependency/*", "com.cloudstore.server.service.facade.JavaFacadeWrapper"]

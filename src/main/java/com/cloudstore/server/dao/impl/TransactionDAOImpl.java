@@ -1,9 +1,9 @@
-package dao.impl;
+package com.cloudstore.server.dao.impl;
 
-import dao.interfaces.TransactionDAO;
-import model.entities.Transaction;
-import model.entities.Product;
-import utils.DatabaseConnection;
+import com.cloudstore.server.dao.interfaces.TransactionDAO;
+import com.cloudstore.server.model.entities.Transaction;
+import com.cloudstore.server.model.entities.Product;
+import com.cloudstore.server.utils.DatabaseConnection;
 
 import java.sql.*;
 import java.time.LocalDateTime;

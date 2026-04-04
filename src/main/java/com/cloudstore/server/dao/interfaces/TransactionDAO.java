@@ -1,6 +1,6 @@
-package dao.interfaces;
+package com.cloudstore.server.dao.interfaces;
 
-import model.entities.Transaction;
+import com.cloudstore.server.model.entities.Transaction;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.time.LocalDateTime;

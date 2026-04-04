@@ -1,4 +1,4 @@
-package service.auth.exception;
+package com.cloudstore.server.service.auth.exception;
 
 public class JwtInvalidException extends RuntimeException {
 

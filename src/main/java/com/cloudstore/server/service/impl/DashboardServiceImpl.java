@@ -1,10 +1,10 @@
-package service.impl;
+package com.cloudstore.server.service.impl;
 
-import model.dto.TransactionDTO;
-import model.dto.UserDTO;
-import model.dto.ProductDTO;
-import service.exception.ServiceException;
-import service.interfaces.*;
+import com.cloudstore.server.model.dto.TransactionDTO;
+import com.cloudstore.server.model.dto.UserDTO;
+import com.cloudstore.server.model.dto.ProductDTO;
+import com.cloudstore.server.service.exception.ServiceException;
+import com.cloudstore.server.service.interfaces.*;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;

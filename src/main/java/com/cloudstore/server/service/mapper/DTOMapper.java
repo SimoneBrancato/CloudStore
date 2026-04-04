@@ -1,7 +1,7 @@
-package service.mapper;
+package com.cloudstore.server.service.mapper;
 
-import model.dto.*;
-import model.entities.*;
+import com.cloudstore.server.model.dto.*;
+import com.cloudstore.server.model.entities.*;
 
 public class DTOMapper {
     

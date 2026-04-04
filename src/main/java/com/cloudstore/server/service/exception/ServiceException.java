@@ -1,4 +1,4 @@
-package service.exception;
+package com.cloudstore.server.service.exception;
 
 public class ServiceException extends Exception {
 

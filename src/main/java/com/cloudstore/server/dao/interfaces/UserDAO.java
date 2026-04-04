@@ -1,6 +1,6 @@
-package dao.interfaces;
+package com.cloudstore.server.dao.interfaces;
 
-import model.entities.User;
+import com.cloudstore.server.model.entities.User;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Optional;

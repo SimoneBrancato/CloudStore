@@ -1,4 +1,4 @@
-package model.dto;
+package com.cloudstore.server.model.dto;
 
 public class PermissionDTO {
     private int id; // The unique identifier for the permission
