@@ -297,6 +297,29 @@ public class CloudStoreFacade {
         return transactionService.exists(id);
     }
 
+    // -------------------------------------------------------------------------
+    // Seller level operations
+    // -------------------------------------------------------------------------
+
+    public Map<String, Object> getSellerDashboardStats(String token) throws ServiceException {
+        return sellerMethod(token, () -> dashboardService.getSellerDashboardStats());
+    }
+
+    public List<?> getSellerProducts(String token) throws ServiceException {
+        return sellerMethod(token, () -> dashboardService.getSellerProducts());
+    }
+
+    public List<Map<String, Object>> getSellerSalesOrders(String token, int limit) throws ServiceException {
+        return sellerMethod(token, () -> dashboardService.getSellerSalesOrders(limit));
+    }
+
+    public List<Map<String, Object>> getSellerTopCustomers(String token, int limit) throws ServiceException {
+        return sellerMethod(token, () -> dashboardService.getSellerTopCustomers(limit));
+    }
+
+    public boolean updateSellerProductStock(String token, int productId, int newQuantity) throws ServiceException {
+        return sellerMethod(token, () -> productService.updateStock(productId, newQuantity));
+    }
 
     // -------------------------------------------------------------------------
     // AUTH — public

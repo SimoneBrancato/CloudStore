@@ -71,15 +71,21 @@ public class AuthServiceImpl implements AuthService {
         System.err.println("User permission: " + (user.getPermission() != null ? user.getPermission().getCategory() : "null"));
 
         String permissionCategory = user.getPermission() != null ? user.getPermission().getCategory() : "";
-        boolean isAdmin = permissionCategory != null
-                && permissionCategory.toLowerCase(Locale.ROOT).contains("admin");
+        String categoryLower = permissionCategory != null ? permissionCategory.toLowerCase(Locale.ROOT) : "";
+        boolean isAdmin = categoryLower.contains("admin");
+        boolean isSeller = categoryLower.contains("seller");
         
         System.err.println("Is admin: " + isAdmin);
+        System.err.println("Is seller: " + isSeller);
 
         List<String> roles = new ArrayList<>();
-        roles.add("customer");
+        // Add the appropriate role based on permission category
         if (isAdmin) {
             roles.add("admin");
+        } else if (isSeller) {
+            roles.add("seller");
+        } else {
+            roles.add("customer");
         }
 
         String token = jwtService.generateToken(nickname, roles);

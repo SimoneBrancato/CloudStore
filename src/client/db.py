@@ -108,6 +108,10 @@ class CloudStoreDB:
     def update_product_stock(self, product_id, new_stock):
         return self._call_authenticated_facade("updateProductStock", int(product_id), int(new_stock))
     
+    def update_seller_product_stock(self, product_id, new_stock):
+        """Update product stock for sellers."""
+        return self._call_authenticated_facade("updateSellerProductStock", int(product_id), int(new_stock))
+    
     def low_stock_products(self, threshold):
         return self._call_authenticated_facade("findLowStockProducts", int(threshold))
     
@@ -202,6 +206,31 @@ class CloudStoreDB:
             "productDetails": {"id": int(product_id)}
         }
         return self._call_authenticated_facade("processOrder", transaction)
+    
+    #  SELLER 
+    def get_seller_dashboard_stats(self):
+        """Get dashboard statistics for the authenticated seller."""
+        raw = self._call_authenticated_facade("getSellerDashboardStats")
+        return {
+            "total_sales": float(raw.get("totalSales", 0.0)),
+            "total_orders": raw.get("totalOrders", 0),
+            "total_revenue": float(raw.get("totalRevenue", 0.0)),
+            "average_order_value": float(raw.get("averageOrderValue", 0.0)),
+            "products_sold": raw.get("productsSold", 0),
+            "low_stock_products": raw.get("lowStockProducts", 0),
+        }
+    
+    def get_seller_products(self):
+        """Get all products associated with the authenticated seller."""
+        return self._call_authenticated_facade("getSellerProducts")
+    
+    def get_seller_sales_orders(self, limit=50):
+        """Get recent sales orders for the authenticated seller's products."""
+        return self._call_authenticated_facade("getSellerSalesOrders", int(limit))
+    
+    def get_seller_top_customers(self, limit=10):
+        """Get top customers by total spending for the authenticated seller."""
+        return self._call_authenticated_facade("getSellerTopCustomers", int(limit))
     
     def fetch_one(self, query, params=()):
         if query.strip().lower().startswith("select 1"):

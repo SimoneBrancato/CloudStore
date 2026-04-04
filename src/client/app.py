@@ -121,9 +121,17 @@ def _product_image_source(product):
 
 def _reset_session_after_logout():
     st.session_state.auth_user = None
-    st.session_state.auth_roles = None
+    st.session_state.auth_roles = []
     st.session_state.auth_token = None
     st.session_state.user_cart = {}
+
+
+def _has_role(role_name):
+    """Check if current user has a specific role."""
+    roles = st.session_state.get("auth_roles", [])
+    if not isinstance(roles, list):
+        roles = []
+    return role_name in roles
 
 
 def _show_login(db):
@@ -137,8 +145,11 @@ def _show_login(db):
                 auth_data = db.authenticate_user(nickname, password)
                 st.session_state.auth_user = auth_data.get("user")
                 
-                roles = auth_data.get("roles", [])
-                st.session_state.auth_roles = "admin" if "admin" in roles else "customer"
+                # Keep roles as a list for flexible role-based access control
+                st.session_state.auth_roles = auth_data.get("roles", [])
+                if not isinstance(st.session_state.auth_roles, list):
+                    st.session_state.auth_roles = []
+                
                 st.session_state.auth_token = auth_data.get("token")
                 
                 db = CloudStoreDB(token=st.session_state.auth_token)
@@ -550,20 +561,155 @@ def _render_admin_view(db, current_user):
                 _show_table(profile["orders"])
 
 
+def _render_seller_view(db, current_user):
+    """Seller dashboard and inventory management."""
+    c1, c2 = st.columns([4, 1])
+    c1.subheader(f"Seller Dashboard - {current_user.get('nickname', '')}")
+    if c2.button("Logout", key="logout_seller", use_container_width=True, type="secondary"):
+        _reset_session_after_logout()
+        st.rerun()
+
+    st.caption("Manage your inventory, track sales, and view customer insights")
+
+    # Sidebar with seller info
+    with st.sidebar:
+        st.image(_user_icon_source(), width=74)
+        st.markdown("### Seller Info")
+        st.write(f"Nickname: {current_user.get('nickname', '')}")
+        st.write(f"Name: {current_user.get('name', '')}")
+        st.write(f"Email: {current_user.get('email', '')}")
+
+    tabs = st.tabs([
+        "Dashboard",
+        "Inventory",
+        "Sales Orders",
+        "Top Customers",
+    ])
+
+    with tabs[0]:
+        st.subheader("Sales Overview")
+        try:
+            stats = db.get_seller_dashboard_stats()
+            c1, c2, c3, c4 = st.columns(4)
+            c1.metric("Total Revenue", f"EUR {stats['total_revenue']:.2f}")
+            c2.metric("Orders Received", stats["total_orders"])
+            c3.metric("Avg Order Value", f"EUR {stats['average_order_value']:.2f}")
+            c4.metric("Products Sold", stats["products_sold"])
+            
+            c5, c6 = st.columns(2)
+            c5.metric("Total Sales Volume", f"EUR {stats['total_sales']:.2f}")
+            c6.metric("Low Stock Products", stats["low_stock_products"])
+        except Exception as e:
+            st.error(f"Failed to load dashboard stats: {str(e)}")
+
+    with tabs[1]:
+        st.subheader("Inventory Management")
+        try:
+            products = db.get_seller_products()
+            if not products:
+                st.info("You don't have any products yet")
+            else:
+                # Display products in a nice format
+                for product in products:
+                    product_id = int(product["id"])
+                    stock = int(product["stock"])
+                    price = float(product["price"])
+                    category = _product_category(product)
+
+                    with st.container(border=True):
+                        p0, p1, p2 = st.columns([1.3, 5, 3.7], vertical_alignment="center")
+                        p0.image(_product_image_source(product), width=100)
+                        
+                        p1.markdown(f"**{product['name']}**")
+                        p1.caption(f"{category} | EUR {price:.2f}")
+                        
+                        with p2.form(f"stock_update_form_{product_id}"):
+                            f1, f2 = st.columns([1.5, 1.5], vertical_alignment="bottom")
+                            new_stock = f1.number_input(
+                                "Stock",
+                                min_value=0,
+                                value=stock,
+                                key=f"stock_input_{product_id}",
+                            )
+                            update_clicked = f2.form_submit_button(
+                                "Update",
+                                type="primary",
+                                use_container_width=True,
+                            )
+                            
+                            if update_clicked and new_stock != stock:
+                                try:
+                                    db.update_seller_product_stock(product_id, int(new_stock))
+                                    st.success(f"Stock updated to {int(new_stock)}")
+                                    st.rerun()
+                                except Exception as e:
+                                    st.error(f"Failed to update stock: {str(e)}")
+        except Exception as e:
+            st.error(f"Failed to load inventory: {str(e)}")
+
+    with tabs[2]:
+        st.subheader("Recent Sales Orders")
+        try:
+            limit = st.number_input("Show last", min_value=5, max_value=500, value=50, key="seller_orders_limit")
+            orders = db.get_seller_sales_orders(int(limit))
+            
+            if not orders:
+                st.info("No sales orders yet")
+            else:
+                display_orders = []
+                total_revenue = 0.0
+                for order in orders:
+                    total_revenue += float(order.get("totalCost", 0.0))
+                    display_orders.append({
+                        "Order ID": order.get("id"),
+                        "Customer": order.get("customerName"),
+                        "Product": order.get("product"),
+                        "Quantity": order.get("totalItems"),
+                        "Total": f"EUR {float(order.get('totalCost', 0.0)):.2f}",
+                        "Payment": order.get("paymentMethod"),
+                        "City": order.get("city"),
+                    })
+                
+                _show_table(display_orders)
+                st.metric("Total Revenue from Displayed Orders", f"EUR {total_revenue:.2f}")
+        except Exception as e:
+            st.error(f"Failed to load sales orders: {str(e)}")
+
+    with tabs[3]:
+        st.subheader("Top Customers")
+        try:
+            limit = st.number_input("Show top", min_value=5, max_value=100, value=10, key="seller_customers_limit")
+            customers = db.get_seller_top_customers(int(limit))
+            
+            if not customers:
+                st.info("No customer data yet")
+            else:
+                display_customers = []
+                for customer in customers:
+                    display_customers.append({
+                        "Customer": customer.get("customerName"),
+                        "Total Orders": customer.get("orderCount", 0),
+                        "Total Spent": f"EUR {float(customer.get('totalSpent', 0.0)):.2f}",
+                        "Last Order": customer.get("lastOrderDate", "N/A"),
+                    })
+                
+                _show_table(display_customers)
+        except Exception as e:
+            st.error(f"Failed to load customer data: {str(e)}")
+
+
 def main():
     if "user_cart" not in st.session_state:
         st.session_state.user_cart = {}
     if "auth_user" not in st.session_state:
         st.session_state.auth_user = None
     if "auth_roles" not in st.session_state:
-        st.session_state.auth_roles = None
+        st.session_state.auth_roles = []
     if "auth_token" not in st.session_state:
         st.session_state.auth_token = None
 
     token = st.session_state.get("auth_token")
     db = CloudStoreDB(token=token) if token else CloudStoreDB()
-
-    user_roles = st.session_state.auth_roles
 
     try:
         db.fetch_one("SELECT 1 as ok")
@@ -576,12 +722,18 @@ def main():
         return
 
     try:
-        if "admin" in user_roles:
+        if _has_role("admin"):
             if not st.session_state.auth_token:
                 st.error("Missing admin session credentials, please login again")
                 _reset_session_after_logout()
                 st.rerun()
             _render_admin_view(db, st.session_state.auth_user)
+        elif _has_role("seller"):
+            if not st.session_state.auth_token:
+                st.error("Missing seller session credentials, please login again")
+                _reset_session_after_logout()
+                st.rerun()
+            _render_seller_view(db, st.session_state.auth_user)
         else:
             _render_customer_view(db, st.session_state.auth_user)
     except Exception as e:
