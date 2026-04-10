@@ -36,7 +36,7 @@ public class CloudStoreFacade {
             this.authService = new AuthServiceImpl();
             this.cartService = new CartServiceImpl();
             this.dashboardService = new DashboardServiceImpl();
-            this.accessControl = new AccessControl(authService, userService);
+            this.accessControl = new AccessControl();
         } catch (Exception e) {
             throw new ServiceException("Unable to initialize CloudStoreFacade", e);
         }
@@ -49,26 +49,26 @@ public class CloudStoreFacade {
         T get() throws ServiceException;
     }
 
-    private <T> T adminMethod(String token, RoleBasedInterface<T> action) throws ServiceException {
-        this.accessControl.requireRole(token, Role.ADMIN);
+    private <T> T adminMethod(RoleBasedInterface<T> action) throws ServiceException {
+        this.accessControl.requireRole(Role.ADMIN);
         return action.get();
     }
 
-    private <T> T sellerMethod(String token, RoleBasedInterface<T> action) throws ServiceException {
-        this.accessControl.requireRole(token, Role.SELLER);
+    private <T> T sellerMethod(RoleBasedInterface<T> action) throws ServiceException {
+        this.accessControl.requireRole(Role.SELLER);
         return action.get();
     }
 
-    private <T> T customerMethod(String token, String nickname, RoleBasedInterface<T> action) throws ServiceException {
-        UserDTO caller = this.accessControl.requireRole(token, Role.CUSTOMER);
+    private <T> T customerMethod(String nickname, RoleBasedInterface<T> action) throws ServiceException {
+        AuthenticationResult caller = this.accessControl.requireRole(Role.CUSTOMER);
         requireSelfOrAdmin(caller, nickname);
         return action.get();
     }
 
-    private void requireSelfOrAdmin(UserDTO caller, String nickname) throws ServiceException {
+    private void requireSelfOrAdmin(AuthenticationResult caller, String nickname) throws ServiceException {
         if (caller.getNickname().equals(nickname))
             return;
-        if (accessControl.resolveRole(caller).hasAccessTo(Role.ADMIN))
+        if (accessControl.resolveRole(caller.getRoles()).hasAccessTo(Role.ADMIN))
             return;
         throw new ServiceException("Access denied: you can only access your own resources");
     }
@@ -77,128 +77,128 @@ public class CloudStoreFacade {
     // Admin only
     // -------------------------------------------------------------------------
 
-    public Optional<PermissionDTO> findPermissionById(String token, int id) throws ServiceException {
-        return adminMethod(token, () -> permissionService.findById(id));
+    public Optional<PermissionDTO> findPermissionById(int id) throws ServiceException {
+        return adminMethod(() -> permissionService.findById(id));
     }
 
-    public Optional<PermissionDTO> findPermissionByCategory(String token, String category) throws ServiceException {
-        return adminMethod(token, () -> permissionService.findByCategory(category));
+    public Optional<PermissionDTO> findPermissionByCategory(String category) throws ServiceException {
+        return adminMethod(() -> permissionService.findByCategory(category));
     }
 
-    public List<PermissionDTO> getAllPermissions(String token) throws ServiceException {
-        return adminMethod(token, () -> permissionService.findAll());
+    public List<PermissionDTO> getAllPermissions() throws ServiceException {
+        return adminMethod(() -> permissionService.findAll());
     }
 
-    public PermissionDTO savePermission(String token, PermissionDTO dto) throws ServiceException {
-        return adminMethod(token, () -> permissionService.save(dto));
+    public PermissionDTO savePermission(PermissionDTO dto) throws ServiceException {
+        return adminMethod(() -> permissionService.save(dto));
     }
 
-    public boolean deletePermission(String token, int id) throws ServiceException {
-        return adminMethod(token, () -> permissionService.delete(id));
+    public boolean deletePermission(int id) throws ServiceException {
+        return adminMethod(() -> permissionService.delete(id));
     }
 
-    public int countPermissions(String token) throws ServiceException {
-        return adminMethod(token, () -> permissionService.count());
+    public int countPermissions() throws ServiceException {
+        return adminMethod(() -> permissionService.count());
     }
 
-    public ProductDTO saveProduct(String token, ProductDTO dto) throws ServiceException {
-        return adminMethod(token, () -> productService.save(dto));
+    public ProductDTO saveProduct(ProductDTO dto) throws ServiceException {
+        return adminMethod(() -> productService.save(dto));
     }
 
-    public boolean deleteProduct(String token, int id) throws ServiceException {
-        return adminMethod(token, () -> productService.delete(id));
+    public boolean deleteProduct(int id) throws ServiceException {
+        return adminMethod(() -> productService.delete(id));
     }
 
-    public boolean updateProductStock(String token, int productId, int newQuantity) throws ServiceException {
-        return adminMethod(token, () -> productService.updateStock(productId, newQuantity));
+    public boolean updateProductStock(int productId, int newQuantity) throws ServiceException {
+        return adminMethod(() -> productService.updateStock(productId, newQuantity));
     }
 
-    public List<ProductDTO> findLowStockProducts(String token, int threshold) throws ServiceException {
-        return adminMethod(token, () -> productService.findLowStockProducts(threshold));
+    public List<ProductDTO> findLowStockProducts(int threshold) throws ServiceException {
+        return adminMethod(() -> productService.findLowStockProducts(threshold));
     }
 
-    public int countProducts(String token) throws ServiceException {
-        return adminMethod(token, () -> productService.count());
+    public int countProducts() throws ServiceException {
+        return adminMethod(() -> productService.count());
     }
 
-    public List<UserDTO> findUsersByPermission(String token, int permissionId) throws ServiceException {
-        return adminMethod(token, () -> userService.findByPermission(permissionId));
+    public List<UserDTO> findUsersByPermission(int permissionId) throws ServiceException {
+        return adminMethod(() -> userService.findByPermission(permissionId));
     }
 
-    public List<UserDTO> getAllUsers(String token) throws ServiceException {
-        return adminMethod(token, () -> userService.findAll());
+    public List<UserDTO> getAllUsers() throws ServiceException {
+        return adminMethod(() -> userService.findAll());
     }
 
-    public boolean deleteUser(String token, String nickname) throws ServiceException {
-        return adminMethod(token, () -> userService.delete(nickname));
+    public boolean deleteUser(String nickname) throws ServiceException {
+        return adminMethod(() -> userService.delete(nickname));
     }
 
-    public boolean updateUserPassword(String token, String nickname, String newPassword) throws ServiceException {
-        return adminMethod(token, () -> userService.updatePassword(nickname, newPassword));
+    public boolean updateUserPassword(String nickname, String newPassword) throws ServiceException {
+        return adminMethod(() -> userService.updatePassword(nickname, newPassword));
     }
 
-    public boolean updateUserPermission(String token, String nickname, int newPermissionId) throws ServiceException {
-        return adminMethod(token, () -> userService.updatePermission(nickname, newPermissionId));
+    public boolean updateUserPermission(String nickname, int newPermissionId) throws ServiceException {
+        return adminMethod(() -> userService.updatePermission(nickname, newPermissionId));
     }
 
-    public int countUsers(String token) throws ServiceException {
-        return adminMethod(token, () -> userService.count());
+    public int countUsers() throws ServiceException {
+        return adminMethod(() -> userService.count());
     }
 
-    public Optional<TransactionDTO> findTransactionById(String token, long id) throws ServiceException {
-        return adminMethod(token, () -> transactionService.findById(id));
+    public Optional<TransactionDTO> findTransactionById(long id) throws ServiceException {
+        return adminMethod(() -> transactionService.findById(id));
     }
 
-    public List<TransactionDTO> findTransactionsByProduct(String token, int productId) throws ServiceException {
-        return adminMethod(token, () -> transactionService.findByProduct(productId));
+    public List<TransactionDTO> findTransactionsByProduct(int productId) throws ServiceException {
+        return adminMethod(() -> transactionService.findByProduct(productId));
     }
 
-    public List<TransactionDTO> findRecentTransactionsByProduct(String token, int productId, int limit) throws ServiceException {
-        return adminMethod(token, () -> transactionService.findRecentByProduct(productId, limit));
+    public List<TransactionDTO> findRecentTransactionsByProduct(int productId, int limit) throws ServiceException {
+        return adminMethod(() -> transactionService.findRecentByProduct(productId, limit));
     }
 
-    public List<TransactionDTO> findTransactionsByDateRange(String token, LocalDateTime start, LocalDateTime end) throws ServiceException {
-        return adminMethod(token, () -> transactionService.findByDateRange(start, end));
+    public List<TransactionDTO> findTransactionsByDateRange(LocalDateTime start, LocalDateTime end) throws ServiceException {
+        return adminMethod(() -> transactionService.findByDateRange(start, end));
     }
 
-    public List<TransactionDTO> findTransactionsByPaymentMethod(String token, String paymentMethod) throws ServiceException {
-        return adminMethod(token, () -> transactionService.findByPaymentMethod(paymentMethod));
+    public List<TransactionDTO> findTransactionsByPaymentMethod(String paymentMethod) throws ServiceException {
+        return adminMethod(() -> transactionService.findByPaymentMethod(paymentMethod));
     }
 
-    public List<TransactionDTO> findTransactionsByCity(String token, String city) throws ServiceException {
-        return adminMethod(token, () -> transactionService.findByCity(city));
+    public List<TransactionDTO> findTransactionsByCity(String city) throws ServiceException {
+        return adminMethod(() -> transactionService.findByCity(city));
     }
 
-    public List<TransactionDTO> getAllTransactions(String token) throws ServiceException {
-        return adminMethod(token, () -> transactionService.findAll());
+    public List<TransactionDTO> getAllTransactions() throws ServiceException {
+        return adminMethod(() -> transactionService.findAll());
     }
 
-    public TransactionDTO saveTransaction(String token, TransactionDTO dto) throws ServiceException {
-        return adminMethod(token, () -> transactionService.save(dto));
+    public TransactionDTO saveTransaction(TransactionDTO dto) throws ServiceException {
+        return adminMethod(() -> transactionService.save(dto));
     }
 
-    public boolean deleteTransaction(String token, long id) throws ServiceException {
-        return adminMethod(token, () -> transactionService.delete(id));
+    public boolean deleteTransaction(long id) throws ServiceException {
+        return adminMethod(() -> transactionService.delete(id));
     }
 
-    public double calculateTotalSales(String token, LocalDateTime start, LocalDateTime end) throws ServiceException {
-        return adminMethod(token, () -> transactionService.calculateTotalSales(start, end));
+    public double calculateTotalSales(LocalDateTime start, LocalDateTime end) throws ServiceException {
+        return adminMethod(() -> transactionService.calculateTotalSales(start, end));
     }
 
-    public int countTransactionsByDateRange(String token, LocalDateTime start, LocalDateTime end) throws ServiceException {
-        return adminMethod(token, () -> transactionService.countByDateRange(start, end));
+    public int countTransactionsByDateRange(LocalDateTime start, LocalDateTime end) throws ServiceException {
+        return adminMethod(() -> transactionService.countByDateRange(start, end));
     }
 
-    public List<TransactionDTO> findRecentTransactions(String token, int limit) throws ServiceException {
-        return adminMethod(token, () -> transactionService.findRecentTransactions(limit));
+    public List<TransactionDTO> findRecentTransactions(int limit) throws ServiceException {
+        return adminMethod(() -> transactionService.findRecentTransactions(limit));
     }
 
-    public int countTransactions(String token) throws ServiceException {
-        return adminMethod(token, () -> transactionService.count());
+    public int countTransactions() throws ServiceException {
+        return adminMethod(() -> transactionService.count());
     }
 
-    public Map<String, Object> getDashboardStats(String token) throws ServiceException {
-        return adminMethod(token, () -> dashboardService.getDashboardStats());
+    public Map<String, Object> getDashboardStats() throws ServiceException {
+        return adminMethod(() -> dashboardService.getDashboardStats());
     }
 
     // -------------------------------------------------------------------------
@@ -257,33 +257,33 @@ public class CloudStoreFacade {
     // Customer level operations
     // -------------------------------------------------------------------------
 
-    public List<TransactionDTO> findTransactionsByCustomer(String token, String customerName) throws ServiceException {
-        return customerMethod(token, customerName, () -> transactionService.findByCustomer(customerName));
+    public List<TransactionDTO> findTransactionsByCustomer(String customerName) throws ServiceException {
+        return customerMethod(customerName, () -> transactionService.findByCustomer(customerName));
     }
 
-    public Map<String, Object> getCheckoutContext(String token, String customerName, Map<Integer, Integer> items) throws ServiceException {
-        return customerMethod(token, customerName, () -> cartService.getCheckoutContext(customerName, items));
+    public Map<String, Object> getCheckoutContext(String customerName, Map<Integer, Integer> items) throws ServiceException {
+        return customerMethod(customerName, () -> cartService.getCheckoutContext(customerName, items));
     }
 
-    public TransactionDTO processOrder(String token, String customerName, TransactionDTO dto) throws ServiceException {
-        return customerMethod(token, customerName, () -> cartService.processSingleOrder(dto));
+    public TransactionDTO processOrder(String customerName, TransactionDTO dto) throws ServiceException {
+        return customerMethod(customerName, () -> cartService.processSingleOrder(dto));
     }
 
-    public Map<String, Object> processCartOrder(String token, String customerName, String paymentMethod,
+    public Map<String, Object> processCartOrder(String customerName, String paymentMethod,
                                                 String city, Map<Integer, Integer> items) throws ServiceException {
-        return customerMethod(token, customerName, () -> cartService.processCartOrder(customerName, paymentMethod, city, items));
+        return customerMethod(customerName, () -> cartService.processCartOrder(customerName, paymentMethod, city, items));
     }
 
-    public Map<String, Object> getUserProfile(String token, String nickname) throws ServiceException {
-        return customerMethod(token, nickname, () -> dashboardService.getUserProfile(nickname));
+    public Map<String, Object> getUserProfile(String nickname) throws ServiceException {
+        return customerMethod(nickname, () -> dashboardService.getUserProfile(nickname));
     }
 
     // -------------------------------------------------------------------------
     // UTILITIES
     // -------------------------------------------------------------------------
 
-    public int getFirstAvailablePermissionId(String token) throws ServiceException {
-        return adminMethod(token, () -> permissionService.findAll().stream()
+    public int getFirstAvailablePermissionId() throws ServiceException {
+        return adminMethod(() -> permissionService.findAll().stream()
                 .findFirst()
                 .orElseThrow(() -> new ServiceException("No permission found"))
                 .getId());
@@ -301,24 +301,24 @@ public class CloudStoreFacade {
     // Seller level operations
     // -------------------------------------------------------------------------
 
-    public Map<String, Object> getSellerDashboardStats(String token) throws ServiceException {
-        return sellerMethod(token, () -> dashboardService.getSellerDashboardStats());
+    public Map<String, Object> getSellerDashboardStats() throws ServiceException {
+        return sellerMethod(() -> dashboardService.getSellerDashboardStats());
     }
 
-    public List<?> getSellerProducts(String token) throws ServiceException {
-        return sellerMethod(token, () -> dashboardService.getSellerProducts());
+    public List<?> getSellerProducts() throws ServiceException {
+        return sellerMethod(() -> dashboardService.getSellerProducts());
     }
 
-    public List<Map<String, Object>> getSellerSalesOrders(String token, int limit) throws ServiceException {
-        return sellerMethod(token, () -> dashboardService.getSellerSalesOrders(limit));
+    public List<Map<String, Object>> getSellerSalesOrders(int limit) throws ServiceException {
+        return sellerMethod(() -> dashboardService.getSellerSalesOrders(limit));
     }
 
-    public List<Map<String, Object>> getSellerTopCustomers(String token, int limit) throws ServiceException {
-        return sellerMethod(token, () -> dashboardService.getSellerTopCustomers(limit));
+    public List<Map<String, Object>> getSellerTopCustomers(int limit) throws ServiceException {
+        return sellerMethod(() -> dashboardService.getSellerTopCustomers(limit));
     }
 
-    public boolean updateSellerProductStock(String token, int productId, int newQuantity) throws ServiceException {
-        return sellerMethod(token, () -> productService.updateStock(productId, newQuantity));
+    public boolean updateSellerProductStock(int productId, int newQuantity) throws ServiceException {
+        return sellerMethod(() -> productService.updateStock(productId, newQuantity));
     }
 
     // -------------------------------------------------------------------------
@@ -327,9 +327,5 @@ public class CloudStoreFacade {
 
     public LoginResult authenticateUser(String nickname, String password) throws ServiceException {
         return authService.authenticateUser(nickname, password);
-    }
-
-    public AuthenticationResult getSessionFromToken(String token) throws ServiceException {
-        return authService.getSessionFromToken(token);
     }
 }

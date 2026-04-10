@@ -11,7 +11,7 @@ public final class LoginResult {
 
     private final UserDTO user; // The user details of the logged-in user
 
-    private final List<String> roles; // The roles associated with the logged-in user
+    private final String role; // The highest priority role associated with the logged-in user
 
     private final boolean isAdmin; // Indicates whether the logged-in user has administrative privileges
 
@@ -19,13 +19,13 @@ public final class LoginResult {
         * Constructor for LoginResult.
         * @param token The authentication token for the logged-in user.
         * @param user The user details of the logged-in user.
-        * @param roles The roles associated with the logged-in user. If null, it will be treated as an empty list.
+        * @param role The highest priority role of the logged-in user.
         * @param isAdmin Indicates whether the logged-in user has administrative privileges.
     **/
-    public LoginResult(String token, UserDTO user, List<String> roles, boolean isAdmin) {
+    public LoginResult(String token, UserDTO user, String role, boolean isAdmin) {
         this.token = token;
         this.user = user;
-        this.roles = roles != null ? Collections.unmodifiableList(roles) : Collections.emptyList();
+        this.role = role;
         this.isAdmin = isAdmin;
     }
 
@@ -46,11 +46,11 @@ public final class LoginResult {
     }
 
     /**
-        * Gets the roles associated with the logged-in user.
-        * @return The list of roles.
+        * Gets the highest priority role associated with the logged-in user.
+        * @return The single role.
     **/
-    public List<String> getRoles() {
-        return roles;
+    public String getRole() {
+        return role;
     }
     
     /**

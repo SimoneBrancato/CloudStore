@@ -5,6 +5,8 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.cloudstore.server.service.exception.ServiceException;
 import com.cloudstore.server.service.security.SecurityContext;
+import com.cloudstore.server.service.interfaces.AuthService;
+import com.cloudstore.server.service.impl.AuthServiceImpl;
 import com.cloudstore.server.model.dto.auth.AuthenticationResult;
 import com.sun.net.httpserver.HttpServer;
 import com.sun.net.httpserver.HttpHandler;
@@ -32,6 +34,9 @@ public class JavaFacadeWrapper {
     // Facade instance to handle business logic
     private static final CloudStoreFacade FACADE;
 
+    // Auth service to validate tokens
+    private static final AuthService AUTH_SERVICE;
+
     // Port number for the HTTP server
     private static final int PORT = 9999;
     
@@ -41,6 +46,7 @@ public class JavaFacadeWrapper {
         try {
             System.err.println("Initializing CloudStoreFacade...");
             FACADE = new CloudStoreFacade();
+            AUTH_SERVICE = new AuthServiceImpl();
             System.err.println("CloudStoreFacade initialized successfully");
         } catch (ServiceException e) {
             System.err.println("Failed to initialize facade: " + e.getMessage());
@@ -110,7 +116,7 @@ public class JavaFacadeWrapper {
                 if (authHeader != null && authHeader.startsWith("Bearer ")) {
                     token = authHeader.substring(7);
                     try {
-                        AuthenticationResult session = FACADE.getSessionFromToken(token);
+                        AuthenticationResult session = AUTH_SERVICE.getSessionFromToken(token);
                         SecurityContext.set(session);
                     } catch (Exception e) {
                         System.err.println("Invalid token: " + e.getMessage());
@@ -120,7 +126,7 @@ public class JavaFacadeWrapper {
                 }
                 
                 System.err.println("Invoking: " + methodName + " with args: " + Arrays.toString(argsArray));
-                Object result = invokeMethod(methodName, argsArray, token);
+                Object result = invokeMethod(methodName, argsArray);
                 System.err.println("Result: " + result);
                 
                 Map<String, Object> response = new HashMap<>();
@@ -174,7 +180,7 @@ public class JavaFacadeWrapper {
          * @return The result of the method invocation.
          * @throws Exception If an error occurs while invoking the method.
         **/
-        private static Object invokeMethod(String methodName, Object[] args, String token) throws Exception {
+        private static Object invokeMethod(String methodName, Object[] args) throws Exception {
             Method[] methods = CloudStoreFacade.class.getMethods();
             Method targetMethod = null;
             
@@ -183,27 +189,6 @@ public class JavaFacadeWrapper {
                 if (m.getName().equals(methodName) && m.getParameterCount() == args.length) {
                     targetMethod = m;
                     break;
-                }
-            }
-            
-            // If not found and we have a token, try to find a method that expects token as first param
-            if (targetMethod == null && token != null) {
-                for (Method m : methods) {
-                    if (m.getName().equals(methodName) && m.getParameterCount() == args.length + 1) {
-                        Class<?>[] paramTypes = m.getParameterTypes();
-                        if (paramTypes.length > 0 && paramTypes[0].equals(String.class)) {
-                            targetMethod = m;
-                            break;
-                        }
-                    }
-                }
-                
-                // If found, prepend token to args
-                if (targetMethod != null) {
-                    Object[] newArgs = new Object[args.length + 1];
-                    newArgs[0] = token;
-                    System.arraycopy(args, 0, newArgs, 1, args.length);
-                    args = newArgs;
                 }
             }
             

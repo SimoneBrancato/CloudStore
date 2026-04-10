@@ -2,3 +2,4 @@
 mysql
 target
 .gitignore
+webui/

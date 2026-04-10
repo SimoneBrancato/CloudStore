@@ -121,18 +121,9 @@ def _product_image_source(product):
 
 def _reset_session_after_logout():
     st.session_state.auth_user = None
-    st.session_state.auth_roles = []
+    st.session_state.auth_role = None
     st.session_state.auth_token = None
     st.session_state.user_cart = {}
-
-
-def _has_role(role_name):
-    """Check if current user has a specific role."""
-    roles = st.session_state.get("auth_roles", [])
-    if not isinstance(roles, list):
-        roles = []
-    return role_name in roles
-
 
 def _show_login(db):
     st.subheader("Login")
@@ -145,10 +136,8 @@ def _show_login(db):
                 auth_data = db.authenticate_user(nickname, password)
                 st.session_state.auth_user = auth_data.get("user")
                 
-                # Keep roles as a list for flexible role-based access control
-                st.session_state.auth_roles = auth_data.get("roles", [])
-                if not isinstance(st.session_state.auth_roles, list):
-                    st.session_state.auth_roles = []
+                # Save the highest priority role assigned dynamically
+                st.session_state.auth_role = auth_data.get("role", "customer")
                 
                 st.session_state.auth_token = auth_data.get("token")
                 
@@ -571,7 +560,6 @@ def _render_seller_view(db, current_user):
 
     st.caption("Manage your inventory, track sales, and view customer insights")
 
-    # Sidebar with seller info
     with st.sidebar:
         st.image(_user_icon_source(), width=74)
         st.markdown("### Seller Info")
@@ -600,6 +588,8 @@ def _render_seller_view(db, current_user):
             c5.metric("Total Sales Volume", f"EUR {stats['total_sales']:.2f}")
             c6.metric("Low Stock Products", stats["low_stock_products"])
         except Exception as e:
+            if "token" in str(e).lower():
+                raise
             st.error(f"Failed to load dashboard stats: {str(e)}")
 
     with tabs[1]:
@@ -609,7 +599,6 @@ def _render_seller_view(db, current_user):
             if not products:
                 st.info("You don't have any products yet")
             else:
-                # Display products in a nice format
                 for product in products:
                     product_id = int(product["id"])
                     stock = int(product["stock"])
@@ -643,8 +632,12 @@ def _render_seller_view(db, current_user):
                                     st.success(f"Stock updated to {int(new_stock)}")
                                     st.rerun()
                                 except Exception as e:
+                                    if "token" in str(e).lower():
+                                        raise
                                     st.error(f"Failed to update stock: {str(e)}")
         except Exception as e:
+            if "token" in str(e).lower():
+                raise
             st.error(f"Failed to load inventory: {str(e)}")
 
     with tabs[2]:
@@ -673,6 +666,8 @@ def _render_seller_view(db, current_user):
                 _show_table(display_orders)
                 st.metric("Total Revenue from Displayed Orders", f"EUR {total_revenue:.2f}")
         except Exception as e:
+            if "token" in str(e).lower():
+                raise
             st.error(f"Failed to load sales orders: {str(e)}")
 
     with tabs[3]:
@@ -695,6 +690,8 @@ def _render_seller_view(db, current_user):
                 
                 _show_table(display_customers)
         except Exception as e:
+            if "token" in str(e).lower():
+                raise
             st.error(f"Failed to load customer data: {str(e)}")
 
 
@@ -703,8 +700,8 @@ def main():
         st.session_state.user_cart = {}
     if "auth_user" not in st.session_state:
         st.session_state.auth_user = None
-    if "auth_roles" not in st.session_state:
-        st.session_state.auth_roles = []
+    if "auth_role" not in st.session_state:
+        st.session_state.auth_role = "customer"
     if "auth_token" not in st.session_state:
         st.session_state.auth_token = None
 
@@ -722,20 +719,23 @@ def main():
         return
 
     try:
-        if _has_role("admin"):
-            if not st.session_state.auth_token:
-                st.error("Missing admin session credentials, please login again")
-                _reset_session_after_logout()
-                st.rerun()
-            _render_admin_view(db, st.session_state.auth_user)
-        elif _has_role("seller"):
-            if not st.session_state.auth_token:
-                st.error("Missing seller session credentials, please login again")
-                _reset_session_after_logout()
-                st.rerun()
-            _render_seller_view(db, st.session_state.auth_user)
-        else:
-            _render_customer_view(db, st.session_state.auth_user)
+        role = st.session_state.get("auth_role", "customer")
+        
+        # Dynamically resolve view function
+        VIEWS = {
+            "customer": _render_customer_view,
+            "admin": _render_admin_view,
+            "seller": _render_seller_view,
+        }
+
+        view_func = VIEWS.get(role, _render_customer_view)
+            
+        if role != "customer" and not st.session_state.auth_token:
+            st.error(f"Missing {role} session credentials, please login again")
+            _reset_session_after_logout()
+            st.rerun()
+            
+        view_func(db, st.session_state.auth_user)
     except Exception as e:
         if "token" in str(e).lower():
             _reset_session_after_logout()

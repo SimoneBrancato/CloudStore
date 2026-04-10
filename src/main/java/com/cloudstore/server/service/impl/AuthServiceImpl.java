@@ -7,6 +7,7 @@ import com.cloudstore.server.service.auth.JWTService;
 import com.cloudstore.server.service.exception.ServiceException;
 import com.cloudstore.server.service.interfaces.AuthService;
 import com.cloudstore.server.service.interfaces.UserService;
+import com.cloudstore.server.model.entities.Role;
 import io.jsonwebtoken.Claims;
 
 import java.util.ArrayList;
@@ -62,36 +63,23 @@ public class AuthServiceImpl implements AuthService {
     **/
     @Override
     public LoginResult authenticateUser(String nickname, String password) throws ServiceException {
-        System.err.println("=== AUTHENTICATE USER ===");
-        System.err.println("Nickname: " + nickname);
-        System.err.println("Password: " + password);
         
         UserDTO user = authenticateCredentials(nickname, password);
-        System.err.println("User found: " + user.getNickname());
-        System.err.println("User permission: " + (user.getPermission() != null ? user.getPermission().getCategory() : "null"));
 
-        String permissionCategory = user.getPermission() != null ? user.getPermission().getCategory() : "";
-        String categoryLower = permissionCategory != null ? permissionCategory.toLowerCase(Locale.ROOT) : "";
-        boolean isAdmin = categoryLower.contains("admin");
-        boolean isSeller = categoryLower.contains("seller");
-        
-        System.err.println("Is admin: " + isAdmin);
-        System.err.println("Is seller: " + isSeller);
-
-        List<String> roles = new ArrayList<>();
-        // Add the appropriate role based on permission category
-        if (isAdmin) {
-            roles.add("admin");
-        } else if (isSeller) {
-            roles.add("seller");
-        } else {
-            roles.add("customer");
+        Role assignedRole = Role.CUSTOMER;
+        if (user.getPermission() != null) {
+            assignedRole = Role.fromId(user.getPermission().getId());
         }
 
-        String token = jwtService.generateToken(nickname, roles);
-        System.err.println("Token generated successfully");
+        boolean isAdmin = (assignedRole == Role.ADMIN);
 
-        return new LoginResult(token, user, roles, isAdmin);
+        List<String> roles = new ArrayList<>();
+        roles.add(assignedRole.getRoleName());
+
+        String token = jwtService.generateToken(nickname, roles);
+
+        String role = roles.isEmpty() ? "customer" : roles.get(0);
+        return new LoginResult(token, user, role, isAdmin);
     }
 
     /** 
@@ -121,28 +109,20 @@ public class AuthServiceImpl implements AuthService {
         * @throws ServiceException If authentication fails.
     **/
     private UserDTO authenticateCredentials(String nickname, String password) throws ServiceException {
-        System.err.println("Checking credentials for: " + nickname);
         
         if (nickname == null || nickname.isBlank() || password == null || password.isBlank()) {
-            System.err.println("Missing credentials");
             throw new ServiceException("Authentication failed: Missing credentials.");
         }
 
         UserDTO user = userService.findByNickname(nickname)
                 .orElseThrow(() -> {
-                    System.err.println("User not found: " + nickname);
                     return new ServiceException("Invalid credentials");
                 });
-
-        System.err.println("Stored password: " + user.getPassword());
-        System.err.println("Provided password: " + password);
         
         if (!password.equals(user.getPassword())) {
-            System.err.println("Password mismatch");
             throw new ServiceException("Invalid credentials");
         }
         
-        System.err.println("Credentials valid");
         return user;
     }
 
@@ -154,11 +134,8 @@ public class AuthServiceImpl implements AuthService {
     private JWTService loadJWTServiceFromEnv() {
         String base64Secret = System.getenv("JWT_SECRET");
         if (base64Secret == null || base64Secret.isEmpty()) {
-            System.err.println("ERROR: JWT_SECRET environment variable is not set!");
             throw new IllegalArgumentException("CRITICAL: JWT_SECRET environment variable is not set.");
         }
-        
-        System.err.println("JWT_SECRET loaded (length: " + base64Secret.length() + ")");
 
         long expirationMs;
         try {

@@ -205,7 +205,7 @@ class CloudStoreDB:
             "discount": float(discount),
             "productDetails": {"id": int(product_id)}
         }
-        return self._call_authenticated_facade("processOrder", transaction)
+        return self._call_authenticated_facade("processOrder", customer_name, transaction)
     
     #  SELLER 
     def get_seller_dashboard_stats(self):
