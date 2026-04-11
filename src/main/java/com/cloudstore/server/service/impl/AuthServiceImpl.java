@@ -4,10 +4,11 @@ import com.cloudstore.server.model.dto.UserDTO;
 import com.cloudstore.server.model.dto.auth.AuthenticationResult;
 import com.cloudstore.server.model.dto.auth.LoginResult;
 import com.cloudstore.server.service.auth.JWTService;
+import com.cloudstore.server.service.auth.PasswordHasher;
 import com.cloudstore.server.service.exception.ServiceException;
 import com.cloudstore.server.service.interfaces.AuthService;
 import com.cloudstore.server.service.interfaces.UserService;
-import com.cloudstore.server.model.entities.Role;
+import com.cloudstore.server.model.auth.Role;
 import io.jsonwebtoken.Claims;
 
 import java.util.ArrayList;
@@ -119,7 +120,9 @@ public class AuthServiceImpl implements AuthService {
                     return new ServiceException("Invalid credentials");
                 });
         
-        if (!password.equals(user.getPassword())) {
+        String storedPassword = user.getPassword();
+        boolean validPassword = PasswordHasher.matches(password, storedPassword) || password.equals(storedPassword);
+        if (!validPassword) {
             throw new ServiceException("Invalid credentials");
         }
         

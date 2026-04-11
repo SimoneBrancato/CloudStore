@@ -1,7 +1,7 @@
 package com.cloudstore.server.service.auth.rbac;
 
 import com.cloudstore.server.model.dto.auth.AuthenticationResult;
-import com.cloudstore.server.model.entities.Role;
+import com.cloudstore.server.model.auth.Role;
 import com.cloudstore.server.service.exception.ServiceException;
 import com.cloudstore.server.service.security.SecurityContext;
 
@@ -9,17 +9,17 @@ import java.util.List;
 
 public class AccessControl {
 
+    // Default constructor
     public AccessControl() {
     }
 
-    /**
-     * Valida il contesto di sicurezza e verifica che il chiamante abbia almeno il ruolo richiesto.
-     * Admin può fare tutto ciò che possono fare Seller e Customer
-     *
-     * @param required ruolo minimo necessario per l'operazione
-     * @return AuthenticationResult dell'utente autenticato
-     * @throws ServiceException se il token non è presente o il ruolo è insufficiente
-     */
+    /** 
+        * Verify that the currently authenticated user has the required role to perform an operation.
+        * If the user is not authenticated or does not have sufficient privileges, a ServiceException is thrown.
+        * @param required The role required to perform the operation.
+        * @return The AuthenticationResult of the currently authenticated user if access is granted.
+        * @throws ServiceException if the user is not authenticated or does not have the required role.
+    **/
     public AuthenticationResult requireRole(Role required) throws ServiceException {
         SecurityContext.assertAuthenticated();
         AuthenticationResult auth = SecurityContext.get();
@@ -34,9 +34,12 @@ public class AccessControl {
         return auth;
     }
 
-    /**
-     * Estrae il ruolo di maggior privilegio tra quelli assegnati all'utente.
-     */
+    /** 
+        * Resolves the highest role from a list of role strings.
+        * If the list is null or empty, it defaults to CUSTOMER.
+        * @param roles The list of role strings to resolve.
+        * @return The highest Role enum value corresponding to the provided role strings.
+    **/
     public Role resolveRole(List<String> roles) {
         if (roles == null || roles.isEmpty()) {
             return Role.CUSTOMER;

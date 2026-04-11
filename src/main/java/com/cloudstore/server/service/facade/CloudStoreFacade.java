@@ -7,7 +7,7 @@ import com.cloudstore.server.service.exception.ServiceException;
 import com.cloudstore.server.service.interfaces.*;
 import com.cloudstore.server.service.auth.rbac.AccessControl;
 import com.cloudstore.server.service.impl.*;
-import com.cloudstore.server.model.entities.Role;
+import com.cloudstore.server.model.auth.Role;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -42,7 +42,7 @@ public class CloudStoreFacade {
         }
     }
 
-    /** ROLE BASED METHODS */
+    // RBAC
 
     @FunctionalInterface
     public interface RoleBasedInterface<T> {
@@ -73,9 +73,7 @@ public class CloudStoreFacade {
         throw new ServiceException("Access denied: you can only access your own resources");
     }
 
-    // -------------------------------------------------------------------------
-    // Admin only
-    // -------------------------------------------------------------------------
+    // ADMIN
 
     public Optional<PermissionDTO> findPermissionById(int id) throws ServiceException {
         return adminMethod(() -> permissionService.findById(id));
@@ -201,9 +199,7 @@ public class CloudStoreFacade {
         return adminMethod(() -> dashboardService.getDashboardStats());
     }
 
-    // -------------------------------------------------------------------------
     // PRODUCT
-    // -------------------------------------------------------------------------
 
     public Optional<ProductDTO> findProductById(int id) throws ServiceException {
         return productService.findById(id);
@@ -229,10 +225,8 @@ public class CloudStoreFacade {
         return productService.exists(id);
     }
 
-    // -------------------------------------------------------------------------
-    // USER — registration public, reads/writes admin, self-service customer
-    // -------------------------------------------------------------------------
-
+    // USER
+    
     public Optional<UserDTO> findUserByNickname(String nickname) throws ServiceException {
         return userService.findByNickname(nickname);
     }
@@ -252,10 +246,8 @@ public class CloudStoreFacade {
     public String resolveCustomerCategory(String customerName) throws ServiceException {
         return userService.resolveCustomerCategory(customerName);
     }
-
-    // -------------------------------------------------------------------------
-    // Customer level operations
-    // -------------------------------------------------------------------------
+    
+    // CUSTOMER
 
     public List<TransactionDTO> findTransactionsByCustomer(String customerName) throws ServiceException {
         return customerMethod(customerName, () -> transactionService.findByCustomer(customerName));
@@ -278,10 +270,8 @@ public class CloudStoreFacade {
         return customerMethod(nickname, () -> dashboardService.getUserProfile(nickname));
     }
 
-    // -------------------------------------------------------------------------
     // UTILITIES
-    // -------------------------------------------------------------------------
-
+    
     public int getFirstAvailablePermissionId() throws ServiceException {
         return adminMethod(() -> permissionService.findAll().stream()
                 .findFirst()
@@ -297,9 +287,7 @@ public class CloudStoreFacade {
         return transactionService.exists(id);
     }
 
-    // -------------------------------------------------------------------------
-    // Seller level operations
-    // -------------------------------------------------------------------------
+    // SELLER
 
     public Map<String, Object> getSellerDashboardStats() throws ServiceException {
         return sellerMethod(() -> dashboardService.getSellerDashboardStats());
@@ -321,9 +309,7 @@ public class CloudStoreFacade {
         return sellerMethod(() -> productService.updateStock(productId, newQuantity));
     }
 
-    // -------------------------------------------------------------------------
-    // AUTH — public
-    // -------------------------------------------------------------------------
+    // AUTH
 
     public LoginResult authenticateUser(String nickname, String password) throws ServiceException {
         return authService.authenticateUser(nickname, password);

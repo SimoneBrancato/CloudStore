@@ -9,6 +9,7 @@ import com.cloudstore.server.model.entities.User;
 import com.cloudstore.server.service.exception.ServiceException;
 import com.cloudstore.server.service.interfaces.UserService;
 import com.cloudstore.server.service.mapper.DTOMapper;
+import com.cloudstore.server.service.auth.PasswordHasher;
 
 import java.sql.SQLException;
 import java.util.List;
@@ -137,7 +138,15 @@ public class UserServiceImpl implements UserService {
                 throw new ServiceException("Permission not found with ID: "
                         + (dto.getPermission() != null ? dto.getPermission().getId() : "null"));
             }
-            User saved = userDAO.save(DTOMapper.toEntity(dto));
+            UserDTO dtoToSave = new UserDTO(
+                    dto.getNickname(),
+                    dto.getName(),
+                    dto.getSurname(),
+                    dto.getEmail(),
+                    PasswordHasher.hash(dto.getPassword()),
+                    dto.getPermission()
+            );
+            User saved = userDAO.save(DTOMapper.toEntity(dtoToSave));
             return DTOMapper.toDTO(saved);
         } catch (ServiceException e) {
             throw e;
@@ -174,7 +183,7 @@ public class UserServiceImpl implements UserService {
             throw new ServiceException("Password must contain at least " + MIN_PASSWORD_LENGTH + " characters");
         }
         try {
-            return userDAO.updatePassword(nickname, newPassword);
+            return userDAO.updatePassword(nickname, PasswordHasher.hash(newPassword));
         } catch (SQLException e) {
             throw new ServiceException("Error updating password for: " + nickname, e);
         }
