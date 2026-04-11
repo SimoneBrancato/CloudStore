@@ -1,5 +1,6 @@
+.gitignore
 .env
 mysql
 target
-.gitignore
 webui/
+assets/
