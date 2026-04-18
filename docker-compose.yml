@@ -31,14 +31,34 @@ services:
       JWT_EXPIRATION_MS: ${JWT_EXPIRATION_MS}
       JWT_ISSUER: ${JWT_ISSUER}
       JWT_AUDIENCE: ${JWT_AUDIENCE}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
     depends_on:
       mysql:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     ports:
       - "127.0.0.1:9999:9999"
     networks:
       - cloudstore-network
     restart: unless-stopped
+
+  redis:
+    image: redis:8.6.1   
+    container_name: redis
+    ports:
+      - "127.0.0.1:6379:6379"   
+    volumes:
+      - redis_data:/data
+    networks:
+      - cloudstore-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   client:
     build:
@@ -59,6 +79,7 @@ services:
 
 volumes:
   mysql-data:
+  redis_data:
 
 networks:
   cloudstore-network:

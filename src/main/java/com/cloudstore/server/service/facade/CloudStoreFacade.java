@@ -314,4 +314,8 @@ public class CloudStoreFacade {
     public LoginResult authenticateUser(String nickname, String password) throws ServiceException {
         return authService.authenticateUser(nickname, password);
     }
+
+    public void logout(String token) throws ServiceException {
+        authService.logout(token);
+    }
 }

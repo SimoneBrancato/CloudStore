@@ -2,6 +2,7 @@ import json
 import os
 import requests
 import sys
+import jwt
 
 
 class Linker:
@@ -459,3 +460,17 @@ class Linker:
         if query.strip().lower().startswith("select 1"):
             return {"ok": 1}
         raise RuntimeError("Direct queries are disabled: use the Facade")
+    
+    def logout(self):
+        """Calls server-side logout to blacklist the token in Redis, then clears local token."""
+        if not self.token:
+            return
+        try:
+            self._call_facade("logout", self.token, token=self.token)
+        except Exception as e:
+            print(f"Server-side logout failed: {e}", file=sys.stderr)
+        self.token = None
+
+    def remove_token(self):
+        """Clears the local token reference."""
+        self.token = None

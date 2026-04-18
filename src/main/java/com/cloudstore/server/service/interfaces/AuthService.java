@@ -9,4 +9,6 @@ public interface AuthService {
     LoginResult authenticateUser(String nickname, String password) throws ServiceException;
     
     AuthenticationResult getSessionFromToken(String token) throws ServiceException;
+
+    void logout(String token) throws ServiceException;
 }

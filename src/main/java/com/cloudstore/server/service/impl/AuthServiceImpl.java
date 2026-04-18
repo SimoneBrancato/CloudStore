@@ -5,6 +5,7 @@ import com.cloudstore.server.model.dto.auth.AuthenticationResult;
 import com.cloudstore.server.model.dto.auth.LoginResult;
 import com.cloudstore.server.service.auth.JWTService;
 import com.cloudstore.server.service.auth.PasswordHasher;
+import com.cloudstore.server.service.auth.TokenBlacklistService;
 import com.cloudstore.server.service.exception.ServiceException;
 import com.cloudstore.server.service.interfaces.AuthService;
 import com.cloudstore.server.service.interfaces.UserService;
@@ -12,6 +13,7 @@ import com.cloudstore.server.model.auth.Role;
 import io.jsonwebtoken.Claims;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
@@ -19,6 +21,7 @@ public class AuthServiceImpl implements AuthService {
 
     private final UserService userService; // Dependency on UserService to retrieve user information
     private final JWTService jwtService; // Dependency on JWTService to handle token generation and validation
+    private final TokenBlacklistService blacklistService; // Dependency on TokenBlacklistService to handle token revocation
 
 
     /** 
@@ -29,6 +32,7 @@ public class AuthServiceImpl implements AuthService {
     public AuthServiceImpl(UserService userService, JWTService jwtService) {
         this.userService = userService;
         this.jwtService = jwtService;
+        this.blacklistService = new TokenBlacklistService();
     }
 
     /** 
@@ -39,6 +43,7 @@ public class AuthServiceImpl implements AuthService {
     public AuthServiceImpl(UserService userService) throws ServiceException {
         this.userService = userService;
         this.jwtService = loadJWTServiceFromEnv();
+        this.blacklistService = new TokenBlacklistService();
     }
 
     /** 
@@ -50,6 +55,7 @@ public class AuthServiceImpl implements AuthService {
         try {
             this.userService = new UserServiceImpl();
             this.jwtService = loadJWTServiceFromEnv();
+            this.blacklistService = new TokenBlacklistService();
         } catch (IllegalArgumentException e) {
             throw new ServiceException("Initialization failed: JWT configuration is missing or invalid.", e);
         }
@@ -93,12 +99,45 @@ public class AuthServiceImpl implements AuthService {
     public AuthenticationResult getSessionFromToken(String token) throws ServiceException {
         try {
             Claims claims = jwtService.validateAndGetClaims(token);
+
+            // Check if the token has been revoked (blacklisted via logout)
+            String jti = claims.getId();
+            if (jti != null && blacklistService.isRevoked(jti)) {
+                throw new ServiceException("Token has been revoked");
+            }
+
             String nickname = claims.getSubject();
             List<String> roles = jwtService.extractRoles(claims);
 
             return new AuthenticationResult(nickname, roles);
+        } catch (ServiceException e) {
+            throw e;
         } catch (RuntimeException e) {
             throw new ServiceException("Identity verification failed: " + e.getMessage());
+        }
+    }
+
+    /** 
+        * Logs out the user by blacklisting the token's JTI in Redis.
+        * The token will be rejected on subsequent requests until it naturally expires.
+        * @param token The JWT token to invalidate.
+        * @throws ServiceException If the token is invalid or cannot be parsed.
+    **/
+    @Override
+    public void logout(String token) throws ServiceException {
+        try {
+            Claims claims = jwtService.validateAndGetClaims(token);
+            String jti = claims.getId();
+            Date expiration = claims.getExpiration();
+
+            if (jti == null || expiration == null) {
+                return; // Token without JTI or expiration — nothing to blacklist
+            }
+
+            long ttlSeconds = (expiration.getTime() - System.currentTimeMillis()) / 1000;
+            blacklistService.revoke(jti, ttlSeconds);
+        } catch (RuntimeException e) {
+            throw new ServiceException("Logout failed: " + e.getMessage());
         }
     }
 

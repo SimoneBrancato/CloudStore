@@ -254,10 +254,17 @@ def _product_image_source(product):
     return _product_image_data_uri(product.get("name", "Product"), _product_category(product))
 
 def _reset_session_after_logout():
+    current_linker = st.session_state.get("linker")
+    if current_linker and st.session_state.get("auth_token"):
+        try:
+            current_linker.logout()
+        except Exception:
+            pass
     st.session_state.auth_user = None
     st.session_state.auth_role = None
     st.session_state.auth_token = None
     st.session_state.user_cart = {}
+    st.session_state.linker = None
     _clear_auth_from_url()
 
 def _show_login(linker):
