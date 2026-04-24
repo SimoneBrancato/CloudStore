@@ -295,6 +295,24 @@ public class TransactionServiceImpl implements TransactionService {
         }
     }
 
+    @Override
+    public int countDistinctProductsSold() throws ServiceException {
+        try {
+            return transactionDAO.countDistinctProductsSold();
+        } catch (SQLException e) {
+            throw new ServiceException("Error counting distinct products sold", e);
+        }
+    }
+
+    @Override
+    public List<java.util.Map<String, Object>> findTopCustomers(int limit) throws ServiceException {
+        try {
+            return transactionDAO.findTopCustomers(limit);
+        } catch (SQLException e) {
+            throw new ServiceException("Error retrieving top customers", e);
+        }
+    }
+
     /** 
         * Validates the fields of a TransactionDTO before saving it to the database.
         * @param dto The TransactionDTO to validate.

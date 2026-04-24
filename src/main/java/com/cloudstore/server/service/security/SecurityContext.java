@@ -3,6 +3,7 @@ package com.cloudstore.server.service.security;
 import com.cloudstore.server.model.dto.auth.LoginResult;
 import com.cloudstore.server.model.dto.auth.AuthenticationResult;
 import com.cloudstore.server.service.exception.ServiceException;
+import com.cloudstore.server.service.exception.UnauthorizedException;
 
 public class SecurityContext {
     
@@ -39,7 +40,7 @@ public class SecurityContext {
     **/
     public static void assertAuthenticated() throws ServiceException {
         if (get() == null) {
-            throw new ServiceException("Unauthorized: Missing or invalid authentication token.");
+            throw new UnauthorizedException("Unauthorized: Missing or invalid authentication token.");
         }
     }
 }

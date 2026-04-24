@@ -6,6 +6,7 @@ import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Map;
 
 public interface TransactionDAO {
     
@@ -40,4 +41,8 @@ public interface TransactionDAO {
     List<Transaction> findRecentTransactions(int limit) throws SQLException;
     
     int count() throws SQLException;
+
+    int countDistinctProductsSold() throws SQLException;
+
+    List<Map<String, Object>> findTopCustomers(int limit) throws SQLException;
 }

@@ -127,7 +127,13 @@ public class CartServiceImpl implements CartService {
                 conn.commit();
                 return DTOMapper.toDTO(saved);
             } catch (Exception e) {
-                conn.rollback();
+                try {
+                    if (!conn.isClosed()) {
+                        conn.rollback();
+                    }
+                } catch (SQLException rollbackEx) {
+                    e.addSuppressed(rollbackEx);
+                }
                 throw e;
             } finally {
                 conn.setAutoCommit(true);
@@ -207,7 +213,13 @@ public class CartServiceImpl implements CartService {
                 result.put("lines", createdTransactions.size());
                 return result;
             } catch (Exception e) {
-                conn.rollback();
+                try {
+                    if (!conn.isClosed()) {
+                        conn.rollback();
+                    }
+                } catch (SQLException rollbackEx) {
+                    e.addSuppressed(rollbackEx);
+                }
                 throw e;
             } finally {
                 conn.setAutoCommit(true);
@@ -245,8 +257,7 @@ public class CartServiceImpl implements CartService {
                             normalized.put(key, value);
                         }
                     }
-                } catch (NumberFormatException ex) {
-                    System.err.println("Invalid product ID: " + entry.getKey());
+                } catch (NumberFormatException ignored) {
                 }
             }
         }

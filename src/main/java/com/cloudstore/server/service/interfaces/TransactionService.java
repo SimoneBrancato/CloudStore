@@ -6,6 +6,7 @@ import com.cloudstore.server.service.exception.ServiceException;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Map;
 
 public interface TransactionService {
 
@@ -39,4 +40,7 @@ public interface TransactionService {
     
     int count() throws ServiceException;
 
+    int countDistinctProductsSold() throws ServiceException;
+
+    List<Map<String, Object>> findTopCustomers(int limit) throws ServiceException;
 }

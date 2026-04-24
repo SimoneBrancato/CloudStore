@@ -7,6 +7,8 @@ import com.cloudstore.server.service.auth.JWTService;
 import com.cloudstore.server.service.auth.PasswordHasher;
 import com.cloudstore.server.service.auth.TokenBlacklistService;
 import com.cloudstore.server.service.exception.ServiceException;
+import com.cloudstore.server.service.exception.UnauthorizedException;
+import com.cloudstore.server.service.exception.ValidationException;
 import com.cloudstore.server.service.interfaces.AuthService;
 import com.cloudstore.server.service.interfaces.UserService;
 import com.cloudstore.server.model.auth.Role;
@@ -103,7 +105,7 @@ public class AuthServiceImpl implements AuthService {
             // Check if the token has been revoked (blacklisted via logout)
             String jti = claims.getId();
             if (jti != null && blacklistService.isRevoked(jti)) {
-                throw new ServiceException("Token has been revoked");
+                throw new UnauthorizedException("Token has been revoked");
             }
 
             String nickname = claims.getSubject();
@@ -113,7 +115,7 @@ public class AuthServiceImpl implements AuthService {
         } catch (ServiceException e) {
             throw e;
         } catch (RuntimeException e) {
-            throw new ServiceException("Identity verification failed: " + e.getMessage());
+            throw new UnauthorizedException("Identity verification failed: " + e.getMessage());
         }
     }
 
@@ -137,7 +139,7 @@ public class AuthServiceImpl implements AuthService {
             long ttlSeconds = (expiration.getTime() - System.currentTimeMillis()) / 1000;
             blacklistService.revoke(jti, ttlSeconds);
         } catch (RuntimeException e) {
-            throw new ServiceException("Logout failed: " + e.getMessage());
+            throw new ServiceException("Logout failed: " + e.getMessage(), e);
         }
     }
 
@@ -151,18 +153,18 @@ public class AuthServiceImpl implements AuthService {
     private UserDTO authenticateCredentials(String nickname, String password) throws ServiceException {
         
         if (nickname == null || nickname.isBlank() || password == null || password.isBlank()) {
-            throw new ServiceException("Authentication failed: Missing credentials.");
+            throw new ValidationException("Authentication failed: Missing credentials.");
         }
 
         UserDTO user = userService.findByNickname(nickname)
                 .orElseThrow(() -> {
-                    return new ServiceException("Invalid credentials");
+                    return new UnauthorizedException("Invalid credentials");
                 });
         
         String storedPassword = user.getPassword();
         boolean validPassword = PasswordHasher.matches(password, storedPassword) || password.equals(storedPassword);
         if (!validPassword) {
-            throw new ServiceException("Invalid credentials");
+            throw new UnauthorizedException("Invalid credentials");
         }
         
         return user;

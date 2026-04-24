@@ -10,6 +10,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Map;
 
 public class TransactionDAOImpl implements TransactionDAO {
     
@@ -475,6 +476,44 @@ public class TransactionDAOImpl implements TransactionDAO {
             }
         }
         return 0;
+    }
+
+    @Override
+    public int countDistinctProductsSold() throws SQLException {
+        try (Connection conn = dbConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement("SELECT COUNT(DISTINCT Product_Id) FROM transactions");
+             ResultSet rs = stmt.executeQuery()) {
+            
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
+        }
+        return 0;
+    }
+
+    @Override
+    public List<Map<String, Object>> findTopCustomers(int limit) throws SQLException {
+        List<java.util.Map<String, Object>> topCustomers = new ArrayList<>();
+        String sql = "SELECT Customer_Name, COUNT(*) as orderCount, SUM(Total_Cost) as totalSpent, MAX(Date) as lastOrderDate " +
+                     "FROM transactions GROUP BY Customer_Name ORDER BY totalSpent DESC LIMIT ?";
+                     
+        try (Connection conn = dbConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            
+            stmt.setInt(1, limit);
+            
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    java.util.Map<String, Object> customer = new java.util.HashMap<>();
+                    customer.put("customerName", rs.getString("Customer_Name"));
+                    customer.put("orderCount", rs.getInt("orderCount"));
+                    customer.put("totalSpent", rs.getDouble("totalSpent"));
+                    customer.put("lastOrderDate", rs.getTimestamp("lastOrderDate").toLocalDateTime());
+                    topCustomers.add(customer);
+                }
+            }
+        }
+        return topCustomers;
     }
     
     /**

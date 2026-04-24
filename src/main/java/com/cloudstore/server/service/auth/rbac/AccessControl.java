@@ -3,6 +3,7 @@ package com.cloudstore.server.service.auth.rbac;
 import com.cloudstore.server.model.dto.auth.AuthenticationResult;
 import com.cloudstore.server.model.auth.Role;
 import com.cloudstore.server.service.exception.ServiceException;
+import com.cloudstore.server.service.exception.ForbiddenException;
 import com.cloudstore.server.service.security.SecurityContext;
 
 import java.util.List;
@@ -26,7 +27,7 @@ public class AccessControl {
         Role callerRole = resolveRole(auth.getRoles());
 
         if (!callerRole.hasAccessTo(required)) {
-            throw new ServiceException(String.format(
+            throw new ForbiddenException(String.format(
                 "Access denied: operation requires '%s' role, but '%s' has '%s'",
                 required, auth.getNickname(), callerRole
             ));

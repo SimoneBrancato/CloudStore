@@ -12,17 +12,21 @@ import com.sun.net.httpserver.HttpServer;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpExchange;
 
+import com.cloudstore.server.service.exception.ValidationException;
+import com.cloudstore.server.service.exception.UnauthorizedException;
+import com.cloudstore.server.service.exception.ForbiddenException;
+import com.cloudstore.server.service.exception.ResourceNotFoundException;
+import java.lang.reflect.InvocationTargetException;
+
 import java.net.InetSocketAddress;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.io.OutputStream;
-import java.io.BufferedReader;
 import java.lang.reflect.Method;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.Executors;
 
 
@@ -44,13 +48,9 @@ public class JavaFacadeWrapper {
     static {
         MAPPER.registerModule(new JavaTimeModule());
         try {
-            System.err.println("Initializing CloudStoreFacade...");
             FACADE = new CloudStoreFacade();
             AUTH_SERVICE = new AuthServiceImpl();
-            System.err.println("CloudStoreFacade initialized successfully");
         } catch (ServiceException e) {
-            System.err.println("Failed to initialize facade: " + e.getMessage());
-            e.printStackTrace();
             throw new RuntimeException("Failed to initialize facade", e);
         }
     }
@@ -60,15 +60,12 @@ public class JavaFacadeWrapper {
      * The server will handle requests to invoke methods on the CloudStoreFacade.
     **/
     public static void main(String[] args) throws Exception {
-        System.err.println("HTTP Server starting on port " + PORT);
         
         HttpServer server = HttpServer.create(new InetSocketAddress(PORT), 0);
         server.createContext("/", new FacadeHandler());
         server.setExecutor(Executors.newCachedThreadPool());
         server.start();
         
-        System.err.println("HTTP Server started on http://localhost:" + PORT);
-        System.err.println("Waiting for requests...");
     }
     
     static class FacadeHandler implements HttpHandler {
@@ -80,96 +77,91 @@ public class JavaFacadeWrapper {
         **/
         @Override
         public void handle(HttpExchange exchange) throws IOException {
-            if ("GET".equals(exchange.getRequestMethod())) {
-                String response = "{\"status\": \"ok\"}";
-                exchange.getResponseHeaders().set("Content-Type", "application/json");
-                exchange.sendResponseHeaders(200, response.getBytes().length);
-                OutputStream os = exchange.getResponseBody();
-                os.write(response.getBytes());
-                os.close();
-                return;
-            }
-            
-            if (!"POST".equals(exchange.getRequestMethod())) {
-                exchange.sendResponseHeaders(405, -1);
-                return;
-            }
-            
             try {
-                InputStreamReader isr = new InputStreamReader(exchange.getRequestBody(), "utf-8");
-                BufferedReader br = new BufferedReader(isr);
-                StringBuilder sb = new StringBuilder();
-                String line;
-                while ((line = br.readLine()) != null) {
-                    sb.append(line);
+                if ("GET".equals(exchange.getRequestMethod())) {
+                    sendJsonResponse(exchange, 200, Map.of("status", "ok"));
+                    return;
                 }
-                String requestBody = sb.toString();
-                System.err.println("Received request: " + requestBody);
                 
-                Map<String, Object> request = MAPPER.readValue(requestBody, new TypeReference<Map<String, Object>>() {});
+                if (!"POST".equals(exchange.getRequestMethod())) {
+                    exchange.sendResponseHeaders(405, -1);
+                    return;
+                }
+
+                // Parse request body
+                Map<String, Object> request = MAPPER.readValue(exchange.getRequestBody(), new TypeReference<>() {});
                 String methodName = (String) request.get("method");
-                List<?> argsList = (List<?>) request.getOrDefault("args", new ArrayList<>());
-                Object[] argsArray = argsList.toArray();
+                List<?> argsList = (List<?>) request.getOrDefault("args", List.of());
                 
-                String token = null;
+                // Authenticate if token provided
                 String authHeader = exchange.getRequestHeaders().getFirst("Authorization");
                 if (authHeader != null && authHeader.startsWith("Bearer ")) {
-                    token = authHeader.substring(7);
-                    try {
-                        AuthenticationResult session = AUTH_SERVICE.getSessionFromToken(token);
-                        SecurityContext.set(session);
-                    } catch (Exception e) {
-                        System.err.println("Invalid token: " + e.getMessage());
-                        sendErrorResponse(exchange, "Unauthorized: " + e.getMessage(), 401);
-                        return;
-                    }
+                    String token = authHeader.substring(7);
+                    AuthenticationResult session = AUTH_SERVICE.getSessionFromToken(token);
+                    SecurityContext.set(session);
                 }
                 
-                System.err.println("Invoking: " + methodName + " with args: " + Arrays.toString(argsArray));
-                Object result = invokeMethod(methodName, argsArray);
-                System.err.println("Result: " + result);
+                // Invoke method and send response
+                Object result = invokeMethod(methodName, argsList.toArray());
+                sendJsonResponse(exchange, 200, Map.of("ok", true, "data", result != null ? result : ""));
                 
-                Map<String, Object> response = new HashMap<>();
-                response.put("ok", true);
-                response.put("data", result);
-                
-                String responseJson = MAPPER.writeValueAsString(response);
-                System.err.println("Sending response: " + responseJson);
-                
-                exchange.getResponseHeaders().set("Content-Type", "application/json");
-                exchange.sendResponseHeaders(200, responseJson.getBytes().length);
-                OutputStream os = exchange.getResponseBody();
-                os.write(responseJson.getBytes());
-                os.close();
-                
-            } catch (Exception e) {
-                System.err.println("Error processing request: " + e.getMessage());
-                e.printStackTrace();
-                
-                sendErrorResponse(exchange, e.getMessage(), 500);
+            } catch (Throwable t) {
+                handleException(exchange, t);
             } finally {
                 SecurityContext.clear();
             }
         }
-        
-        /** 
-         * Sends an error response with the specified message and HTTP status code.
-         * @param exchange The HttpExchange object to send the response through.
-         * @param message The error message to include in the response body.
-         * @param statusCode The HTTP status code to set for the response.
-         * @throws IOException If an I/O error occurs while sending the response.
-        **/
-        private void sendErrorResponse(HttpExchange exchange, String message, int statusCode) throws IOException {
-            Map<String, Object> errorResponse = new HashMap<>();
-            errorResponse.put("ok", false);
-            errorResponse.put("error", message);
-            String errorJson = MAPPER.writeValueAsString(errorResponse);
-            
+
+        private void sendJsonResponse(HttpExchange exchange, int statusCode, Object body) throws IOException {
+            byte[] responseBytes = MAPPER.writeValueAsBytes(body);
             exchange.getResponseHeaders().set("Content-Type", "application/json");
-            exchange.sendResponseHeaders(statusCode, errorJson.getBytes().length);
-            OutputStream os = exchange.getResponseBody();
-            os.write(errorJson.getBytes());
-            os.close();
+            exchange.sendResponseHeaders(statusCode, responseBytes.length);
+            try (OutputStream os = exchange.getResponseBody()) {
+                os.write(responseBytes);
+            }
+        }
+
+        private void handleException(HttpExchange exchange, Throwable t) throws IOException {
+            Throwable cause = (t instanceof InvocationTargetException) ? t.getCause() : t;
+            int statusCode = resolveStatusCode(cause);
+            
+            Map<String, Object> responseBody = new HashMap<>();
+            responseBody.put("ok", false);
+            
+            if (statusCode >= 500) {
+                String trackingId = UUID.randomUUID().toString().substring(0, 8);
+                System.err.printf("[ERROR][%s] %s: %s%n", trackingId, cause.getClass().getSimpleName(), cause.getMessage());
+                cause.printStackTrace();
+                
+                responseBody.put("error", "Internal Server Error");
+                responseBody.put("ref", trackingId);
+            } else {
+                String message = cause.getMessage() != null ? cause.getMessage() : cause.getClass().getSimpleName();
+                responseBody.put("error", message);
+            }
+            
+            sendJsonResponse(exchange, statusCode, responseBody);
+        }
+        
+        
+        /**
+         * Resolves the HTTP status code based on the given Throwable.
+         * @param t The exception.
+         * @return The HTTP status code.
+         */
+        private int resolveStatusCode(Throwable t) {
+            if (t instanceof ValidationException || t instanceof IllegalArgumentException) {
+                return 400;
+            } else if (t instanceof UnauthorizedException || t instanceof SecurityException) {
+                return 401;
+            } else if (t instanceof ForbiddenException) {
+                return 403;
+            } else if (t instanceof ResourceNotFoundException) {
+                return 404;
+            } else if (t instanceof UnsupportedOperationException) {
+                return 501;
+            }
+            return 500;
         }
         
         /** 

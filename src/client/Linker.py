@@ -4,6 +4,16 @@ import requests
 import sys
 import jwt
 
+class APIError(Exception):
+    def __init__(self, status_code, message):
+        self.status_code = status_code
+        super().__init__(message)
+
+class AuthError(APIError): pass
+class ForbiddenError(APIError): pass
+class NotFoundError(APIError): pass
+class ValidationError(APIError): pass
+
 
 class Linker:
     """ Linker class to interact with the backend API for CloudStore.
@@ -55,7 +65,6 @@ class Linker:
     """
     def _call_facade(self, method_name, *args, token=None):
         request = {"method": method_name, "args": args}
-        print(f"Sending request: {request}", file=sys.stderr)
         
         headers = {"Content-Type": "application/json"}
         if token:
@@ -68,17 +77,32 @@ class Linker:
                 timeout=30,
                 headers=headers
             )
-            print(f"Response status: {response.status_code}", file=sys.stderr)
             
             if response.status_code != 200:
                 print(f"HTTP Error: {response.status_code} - {response.text}", file=sys.stderr)
-                raise RuntimeError(f"HTTP {response.status_code}: {response.text}")
+                error_msg = f"HTTP {response.status_code}: {response.text}"
+                try:
+                    result = response.json()
+                    if result.get("error"):
+                        error_msg = result["error"]
+                except Exception:
+                    pass
+                
+                if response.status_code == 400:
+                    raise ValidationError(400, error_msg)
+                elif response.status_code == 401:
+                    raise AuthError(401, error_msg)
+                elif response.status_code == 403:
+                    raise ForbiddenError(403, error_msg)
+                elif response.status_code == 404:
+                    raise NotFoundError(404, error_msg)
+                else:
+                    raise APIError(response.status_code, error_msg)
             
             result = response.json()
-            print(f"Parsed response: {result}", file=sys.stderr)
             
             if not result.get("ok"):
-                raise RuntimeError(result.get("error", "Unknown error"))
+                raise APIError(response.status_code, result.get("error", "Unknown error"))
             
             return result.get("data")
             

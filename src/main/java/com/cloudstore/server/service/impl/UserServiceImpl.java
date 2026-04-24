@@ -7,6 +7,7 @@ import com.cloudstore.server.dao.interfaces.UserDAO;
 import com.cloudstore.server.model.dto.UserDTO;
 import com.cloudstore.server.model.entities.User;
 import com.cloudstore.server.service.exception.ServiceException;
+import com.cloudstore.server.service.exception.ValidationException;
 import com.cloudstore.server.service.interfaces.UserService;
 import com.cloudstore.server.service.mapper.DTOMapper;
 import com.cloudstore.server.service.auth.PasswordHasher;
@@ -129,10 +130,10 @@ public class UserServiceImpl implements UserService {
         validate(dto);
         try {
             if (userDAO.exists(dto.getNickname())) {
-                throw new ServiceException("Nickname already in use: " + dto.getNickname());
+                throw new ValidationException("Nickname already in use: " + dto.getNickname());
             }
             if (userDAO.emailExists(dto.getEmail())) {
-                throw new ServiceException("Email already registered: " + dto.getEmail());
+                throw new ValidationException("Email already registered: " + dto.getEmail());
             }
             if (dto.getPermission() == null || !permissionDAO.exists(dto.getPermission().getId())) {
                 throw new ServiceException("Permission not found with ID: "
@@ -180,7 +181,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public boolean updatePassword(String nickname, String newPassword) throws ServiceException {
         if (newPassword == null || newPassword.length() < MIN_PASSWORD_LENGTH) {
-            throw new ServiceException("Password must contain at least " + MIN_PASSWORD_LENGTH + " characters");
+            throw new ValidationException("Password must contain at least " + MIN_PASSWORD_LENGTH + " characters");
         }
         try {
             return userDAO.updatePassword(nickname, PasswordHasher.hash(newPassword));
@@ -266,13 +267,13 @@ public class UserServiceImpl implements UserService {
     **/
     private void validate(UserDTO dto) throws ServiceException {
         if (dto.getNickname() == null || dto.getNickname().isBlank()) {
-            throw new ServiceException("Nickname cannot be empty");
+            throw new ValidationException("Nickname cannot be empty");
         }
         if (dto.getEmail() == null || !EMAIL_PATTERN.matcher(dto.getEmail()).matches()) {
-            throw new ServiceException("Invalid email format: " + dto.getEmail());
+            throw new ValidationException("Invalid email format: " + dto.getEmail());
         }
         if (dto.getPassword() == null || dto.getPassword().length() < MIN_PASSWORD_LENGTH) {
-            throw new ServiceException("Password must contain at least " + MIN_PASSWORD_LENGTH + " characters");
+            throw new ValidationException("Password must contain at least " + MIN_PASSWORD_LENGTH + " characters");
         }
     }
 }
