@@ -478,6 +478,11 @@ public class TransactionDAOImpl implements TransactionDAO {
         return 0;
     }
 
+    /** 
+        * Counts the number of distinct products sold in all transactions.
+        * @return the count of distinct products sold
+        * @throws SQLException if a database error occurs 
+    */
     @Override
     public int countDistinctProductsSold() throws SQLException {
         try (Connection conn = dbConnection.getConnection();
@@ -491,6 +496,11 @@ public class TransactionDAOImpl implements TransactionDAO {
         return 0;
     }
 
+    /**
+        * Deletes all transactions from the database. This method is used for testing purposes to reset the transaction data.
+        * @return true if transactions were deleted, false otherwise
+        * @throws SQLException if a database error occurs
+    **/
     @Override
     public List<Map<String, Object>> findTopCustomers(int limit) throws SQLException {
         List<java.util.Map<String, Object>> topCustomers = new ArrayList<>();

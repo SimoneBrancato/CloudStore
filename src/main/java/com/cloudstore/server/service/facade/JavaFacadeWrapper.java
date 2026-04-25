@@ -71,9 +71,9 @@ public class JavaFacadeWrapper {
     static class FacadeHandler implements HttpHandler {
         
         /** 
-         * Handles incoming HTTP requests.
-         * @param exchange The HttpExchange object containing request and response information.
-         * @throws IOException If an I/O error occurs while handling the request.
+             * Handles incoming HTTP requests.
+             * @param exchange The HttpExchange object containing request and response information.
+             * @throws IOException If an I/O error occurs while handling the request.
         **/
         @Override
         public void handle(HttpExchange exchange) throws IOException {
@@ -145,9 +145,9 @@ public class JavaFacadeWrapper {
         
         
         /**
-         * Resolves the HTTP status code based on the given Throwable.
-         * @param t The exception.
-         * @return The HTTP status code.
+             * Resolves the HTTP status code based on the given Throwable.
+             * @param t The exception.
+             * @return The HTTP status code.
          */
         private int resolveStatusCode(Throwable t) {
             if (t instanceof ValidationException || t instanceof IllegalArgumentException) {
@@ -165,12 +165,12 @@ public class JavaFacadeWrapper {
         }
         
         /** 
-         * Invokes the specified method on the CloudStoreFacade with the given arguments.
-         * @param methodName The name of the method to invoke.
-         * @param args The arguments to pass to the method.
-         * @param token The authentication token (may be null).
-         * @return The result of the method invocation.
-         * @throws Exception If an error occurs while invoking the method.
+             * Invokes the specified method on the CloudStoreFacade with the given arguments.
+             * @param methodName The name of the method to invoke.
+             * @param args The arguments to pass to the method.
+             * @param token The authentication token (may be null).
+             * @return The result of the method invocation.
+             * @throws Exception If an error occurs while invoking the method.
         **/
         private static Object invokeMethod(String methodName, Object[] args) throws Exception {
             Method[] methods = CloudStoreFacade.class.getMethods();

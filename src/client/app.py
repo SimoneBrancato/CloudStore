@@ -7,7 +7,7 @@ from pathlib import Path
 from urllib.parse import quote
 from streamlit_autorefresh import st_autorefresh
 
-from Linker import Linker
+from models.Linker import Linker
 
 st.set_page_config(page_title="CloudStore", layout="wide")
 st.title("CloudStore")

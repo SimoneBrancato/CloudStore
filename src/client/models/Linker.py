@@ -2,17 +2,11 @@ import json
 import os
 import requests
 import sys
-import jwt
-
-class APIError(Exception):
-    def __init__(self, status_code, message):
-        self.status_code = status_code
-        super().__init__(message)
-
-class AuthError(APIError): pass
-class ForbiddenError(APIError): pass
-class NotFoundError(APIError): pass
-class ValidationError(APIError): pass
+from error.APIError import APIError
+from error.AuthError import AuthError
+from error.ForbiddenError import ForbiddenError
+from error.NotFoundError import NotFoundError
+from error.ValidationError import ValidationError
 
 
 class Linker:
@@ -485,8 +479,8 @@ class Linker:
             return {"ok": 1}
         raise RuntimeError("Direct queries are disabled: use the Facade")
     
+    """Calls server-side logout to blacklist the token in Redis, then clears local token."""
     def logout(self):
-        """Calls server-side logout to blacklist the token in Redis, then clears local token."""
         if not self.token:
             return
         try:
@@ -495,6 +489,6 @@ class Linker:
             print(f"Server-side logout failed: {e}", file=sys.stderr)
         self.token = None
 
+    """Clears the local token reference."""
     def remove_token(self):
-        """Clears the local token reference."""
         self.token = None

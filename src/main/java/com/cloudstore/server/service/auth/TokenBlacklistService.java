@@ -9,11 +9,6 @@ import java.time.Duration;
 
 /**
  * Manages a Redis-backed blacklist of revoked JWT IDs (JTI).
- * Each entry is stored with TTL = remaining token lifetime, so Redis
- * auto-evicts it exactly when the token would have expired naturally.
- *
- * Fail-open: if Redis is unreachable, operations log a warning but do
- * not throw, because availability trumps perfect revocation in this context.
  */
 public class TokenBlacklistService {
 
@@ -21,9 +16,9 @@ public class TokenBlacklistService {
     private static final String PREFIX = "blacklist:";
 
     /**
-     * Reads REDIS_HOST / REDIS_PORT from environment variables.
-     * Defaults: localhost / 6379.
-     * Connection timeout: 2 s; socket timeout: 2 s; pool size: 8 connections.
+         * Reads REDIS_HOST / REDIS_PORT from environment variables.
+         * Defaults: localhost / 6379.
+         * Connection timeout: 2 s; socket timeout: 2 s; pool size: 8 connections.
      */
     public TokenBlacklistService() {    
         String host = System.getenv().getOrDefault("REDIS_HOST", "localhost");
@@ -63,13 +58,10 @@ public class TokenBlacklistService {
     }
 
     /**
-     * Marks a JTI as revoked in Redis.
-     * Uses SET with EX params so the key expires automatically when the token would have.
-     *
-     * @param jti        The JWT ID claim to blacklist
-     * @param ttlSeconds Seconds until the token expires (exp - now).
-     * If <= 0 the token is already expired; nothing is written.
-     */
+         * Marks a JTI as revoked in Redis.
+         * @param jti        The JWT ID claim to blacklist
+         * @param ttlSeconds Seconds until the token expires (exp - now).
+    **/
     public void revoke(String jti, long ttlSeconds) {
         if (ttlSeconds <= 0) {
             return; // Token already expired
@@ -83,11 +75,10 @@ public class TokenBlacklistService {
     }
 
     /**
-     * Returns true if the given JTI has been blacklisted (i.e. the token was revoked).
-     *
-     * @param jti The JWT ID to check
-     * @return true if revoked, false if valid or Redis is unreachable (fail-open)
-     */
+         * Returns true if the given JTI has been blacklisted (i.e. the token was revoked).
+         * @param jti The JWT ID to check
+         * @return true if revoked, false if valid or Redis is unreachable (fail-open)
+    **/
     public boolean isRevoked(String jti) {
         try {
             return redisClient.exists(PREFIX + jti);

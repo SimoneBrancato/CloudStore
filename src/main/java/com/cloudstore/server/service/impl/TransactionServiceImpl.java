@@ -295,6 +295,11 @@ public class TransactionServiceImpl implements TransactionService {
         }
     }
 
+    /** 
+        * Counts the number of distinct products sold across all transactions.
+        * @return The count of distinct products sold.
+        * @throws ServiceException If an error occurs while counting distinct products sold, such as SQL exceptions.
+    **/
     @Override
     public int countDistinctProductsSold() throws ServiceException {
         try {
@@ -304,6 +309,12 @@ public class TransactionServiceImpl implements TransactionService {
         }
     }
 
+    /** 
+        * Retrieves a list of top customers for the seller based on total spending.
+        * @param limit The maximum number of top customers to retrieve.
+        * @return A list of top customers for the seller.
+        * @throws ServiceException If an error occurs while retrieving the top customers, such as SQL exceptions.
+    **/
     @Override
     public List<java.util.Map<String, Object>> findTopCustomers(int limit) throws ServiceException {
         try {

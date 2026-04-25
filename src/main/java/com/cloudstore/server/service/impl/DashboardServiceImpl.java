@@ -14,11 +14,12 @@ import java.util.Optional;
 
 public class DashboardServiceImpl implements DashboardService {
 
-    private final ProductService productService;
-    private final UserService userService;
-    private final TransactionService transactionService;
-    private final PermissionService permissionService;
+    private final ProductService productService; // Dependency on ProductService to retrieve product information
+    private final UserService userService; // Dependency on UserService to retrieve user information
+    private final TransactionService transactionService; // Dependency on TransactionService to retrieve transaction information
+    private final PermissionService permissionService; // Dependency on PermissionService to retrieve permission information
 
+    // Constructor for DashboardServiceImpl. Initializes all required services.
     public DashboardServiceImpl() throws ServiceException {
         try {
             this.productService = new ProductServiceImpl();
@@ -30,6 +31,11 @@ public class DashboardServiceImpl implements DashboardService {
         }
     }
 
+    /** 
+     * Retrieves dashboard statistics including total products, users, transactions, permissions, monthly sales, and low stock products.
+     * @return A map containing various dashboard statistics.
+     * @throws ServiceException If an error occurs while retrieving the statistics.
+    */
     @Override
     public Map<String, Object> getDashboardStats() throws ServiceException {
         Map<String, Object> stats = new HashMap<>();
@@ -51,6 +57,12 @@ public class DashboardServiceImpl implements DashboardService {
         return stats;
     }
 
+    /** 
+     * Retrieves the user profile information including order history and total spent for a given user nickname.
+     * @param nickname The nickname of the user whose profile is to be retrieved.
+     * @return A map containing the user's profile information, order history, total orders, and total spent.
+     * @throws ServiceException If an error occurs while retrieving the user profile.
+    */
     @Override
     public Map<String, Object> getUserProfile(String nickname) throws ServiceException {
         Optional<UserDTO> userOpt = userService.findByNickname(nickname);
@@ -70,6 +82,11 @@ public class DashboardServiceImpl implements DashboardService {
         return profile;
     }
 
+    /** 
+     * Retrieves seller dashboard statistics including total revenue, total orders, average order value, products sold, and low stock products.
+     * @return A map containing various seller dashboard statistics.
+     * @throws ServiceException If an error occurs while retrieving the statistics.
+    */
     @Override
     public Map<String, Object> getSellerDashboardStats() throws ServiceException {
         Map<String, Object> stats = new HashMap<>();
@@ -98,11 +115,22 @@ public class DashboardServiceImpl implements DashboardService {
         return stats;
     }
 
+    /** 
+     * Retrieves a list of products associated with the seller.
+     * @return A list of products for the seller.
+     * @throws ServiceException If an error occurs while retrieving the products.
+    */
     @Override
     public List<?> getSellerProducts() throws ServiceException {
         return productService.findAll();
     }
 
+    /** 
+     * Retrieves a list of recent sales orders for the seller, including details such as customer name, product, total items, total cost, payment method, and city.
+     * @param limit The maximum number of recent sales orders to retrieve.
+     * @return A list of recent sales orders for the seller.
+     * @throws ServiceException If an error occurs while retrieving the sales orders.
+    */
     @Override
     public List<Map<String, Object>> getSellerSalesOrders(int limit) throws ServiceException {
         List<TransactionDTO> transactions = transactionService.findRecentTransactions(limit);
@@ -125,6 +153,12 @@ public class DashboardServiceImpl implements DashboardService {
         return orders;
     }
 
+    /** 
+     * Retrieves a list of top customers for the seller based on total spending.
+     * @param limit The maximum number of top customers to retrieve.
+     * @return A list of top customers for the seller.
+     * @throws ServiceException If an error occurs while retrieving the top customers.
+    */
     @Override
     public List<Map<String, Object>> getSellerTopCustomers(int limit) throws ServiceException {
         return transactionService.findTopCustomers(limit);
