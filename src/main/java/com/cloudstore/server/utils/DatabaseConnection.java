@@ -12,12 +12,12 @@ public class DatabaseConnection {
         * Private constructor for the DatabaseConnection class.
     **/
     private DatabaseConnection() {
-        String host = getEnvOrDefault("DB_HOST", "mysql");
-        String port = getEnvOrDefault("DB_PORT", "3306");
-        String database = getEnvOrDefault("DB_NAME", "cloudstore_db");
+        String host = getRequiredEnv("DB_HOST");
+        String port = getRequiredEnv("DB_PORT");
+        String database = getRequiredEnv("DB_NAME");
         
-        username = getEnvOrDefault("DB_USER", "emi");
-        password = getEnvOrDefault("DB_PASSWORD", "tramonta");
+        username = getRequiredEnv("DB_USER");
+        password = getRequiredEnv("DB_PASSWORD");
         
         
         connectionUrl = String.format(
@@ -27,15 +27,15 @@ public class DatabaseConnection {
     }
     
     /**
-        * Retrieves the value of an environment variable or returns a default value if it's not set.
+        * Retrieves the value of a required environment variable.
         * @param key The environment variable name.
-        * @param defaultValue The default value to return if the environment variable is not set.
-        * @return The value of the environment variable or the default value.
+        * @return The environment variable value.
+        * @throws IllegalStateException If the environment variable is missing or empty.
     **/
-    private String getEnvOrDefault(String key, String defaultValue) {
+    private String getRequiredEnv(String key) {
         String value = System.getenv(key);
         if (value == null || value.isEmpty()) {
-            return defaultValue;
+            throw new IllegalStateException("Missing required environment variable: " + key);
         }
         return value;
     }
