@@ -5,8 +5,9 @@ import re
 import unicodedata
 from pathlib import Path
 from urllib.parse import quote
+from streamlit_autorefresh import st_autorefresh
 
-from db import CloudStoreDB
+from models.Linker import Linker
 
 st.set_page_config(page_title="CloudStore", layout="wide")
 st.title("CloudStore")
@@ -15,13 +16,147 @@ ASSETS_DIR = Path(__file__).resolve().parent / "assets"
 ICON_ASSETS_DIR = ASSETS_DIR / "icons"
 PRODUCT_ASSETS_DIR = ASSETS_DIR / "products"
 SUPPORTED_IMAGE_EXTS = (".png", ".jpg", ".jpeg", ".webp", ".svg")
+AUTO_REFRESH_INTERVAL_MS = 10000
 
+def _qp_get_scalar(params, key):
+    value = params.get(key)
+    if isinstance(value, list):
+        return value[0] if value else None
+    return value
+
+def _persist_auth_in_url(token, role, nickname):
+    if not token:
+        return
+    try:
+        st.query_params.clear()
+        st.query_params["auth_token"] = token
+        st.query_params["auth_role"] = role or "customer"
+        st.query_params["auth_nickname"] = nickname or ""
+    except Exception:
+        try:
+            st.experimental_set_query_params(
+                auth_token=token,
+                auth_role=role or "customer",
+                auth_nickname=nickname or "",
+            )
+        except Exception:
+            pass
+
+def _clear_auth_from_url():
+    try:
+        st.query_params.clear()
+    except Exception:
+        try:
+            st.experimental_set_query_params()
+        except Exception:
+            pass
+
+def _restore_session_from_url():
+    try:
+        params = st.query_params
+    except Exception:
+        return False
+
+    token = _qp_get_scalar(params, "auth_token")
+    if not token:
+        return False
+
+    role = _qp_get_scalar(params, "auth_role") or "customer"
+    nickname = _qp_get_scalar(params, "auth_nickname")
+
+    try:
+        linker = Linker(token=token)
+        user = None
+        if nickname:
+            profile = linker.user_profile(nickname)
+            if profile:
+                user = profile.get("user")
+
+        if not user:
+            _clear_auth_from_url()
+            return False
+
+        st.session_state.auth_token = token
+        st.session_state.auth_role = role
+        st.session_state.auth_user = user
+        st.session_state.linker = linker
+        return True
+    except Exception:
+        _clear_auth_from_url()
+        return False
 
 def _show_table(rows):
     if not rows:
         st.info("No data available")
         return
     st.dataframe(pd.DataFrame(rows), use_container_width=True)
+
+def _build_trending_items_df(rows):
+    if not rows:
+        return pd.DataFrame(columns=["Quantity"])
+
+    frame = pd.DataFrame(rows)
+
+    item_col = None
+    for candidate in ("product", "productName", "name", "item", "product_name"):
+        if candidate in frame.columns:
+            item_col = candidate
+            break
+
+    if item_col is None and "productDetails" in frame.columns:
+        frame["_product_name"] = frame["productDetails"].apply(
+            lambda x: x.get("name") if isinstance(x, dict) else None
+        )
+        if frame["_product_name"].notna().any():
+            item_col = "_product_name"
+
+    qty_col = None
+    for candidate in ("totalItems", "total_items", "quantity", "qty", "count"):
+        if candidate in frame.columns:
+            qty_col = candidate
+            break
+
+    if item_col is None:
+        return pd.DataFrame(columns=["Quantity"])
+
+    items = frame[item_col].fillna("Unknown item").astype(str)
+    if qty_col is None:
+        quantities = pd.Series([1] * len(frame), index=frame.index, dtype=float)
+    else:
+        quantities = pd.to_numeric(frame[qty_col], errors="coerce").fillna(0.0)
+
+    plot_df = pd.DataFrame({"Item": items, "Quantity": quantities})
+    plot_df = plot_df.groupby("Item", as_index=True)["Quantity"].sum().sort_values(ascending=False)
+    return plot_df.to_frame()
+
+def _render_trending_section(rows, empty_msg, missing_field_msg, ranking_caption, top_n):
+    if not rows:
+        st.info(empty_msg)
+        return
+
+    trending_df = _build_trending_items_df(rows)
+    if trending_df.empty:
+        st.warning(missing_field_msg)
+        return
+
+    top_item = trending_df.index[0]
+    top_qty = float(trending_df.iloc[0]["Quantity"])
+    total_qty = float(trending_df["Quantity"].sum())
+
+    m1, m2, m3 = st.columns(3)
+    m1.metric("Top item", top_item)
+    m2.metric("Top quantity", int(top_qty) if top_qty.is_integer() else f"{top_qty:.2f}")
+    m3.metric("Total quantity", int(total_qty) if total_qty.is_integer() else f"{total_qty:.2f}")
+
+    st.bar_chart(trending_df.head(int(top_n)))
+    st.caption(ranking_caption)
+
+def _enable_auto_refresh(role):
+    if role not in {"admin", "customer"}:
+        return
+    if st_autorefresh is None:
+        return
+    st_autorefresh(interval=AUTO_REFRESH_INTERVAL_MS, key="cloudstore_auto_refresh")
 
 def _inject_compact_shop_styles():
     st.markdown(
@@ -44,7 +179,7 @@ def _inject_compact_shop_styles():
     )
 
 def _product_category(product):
-    return product.get("description") or product.get("category") or "Uncategorized"
+    return product.get("category") or "Uncategorized"
 
 def _slugify(text):
     normalized = unicodedata.normalize("NFKD", str(text or ""))
@@ -118,15 +253,21 @@ def _product_image_source(product):
 
     return _product_image_data_uri(product.get("name", "Product"), _product_category(product))
 
-
 def _reset_session_after_logout():
+    current_linker = st.session_state.get("linker")
+    if current_linker and st.session_state.get("auth_token"):
+        try:
+            current_linker.logout()
+        except Exception:
+            pass
     st.session_state.auth_user = None
-    st.session_state.auth_roles = None
+    st.session_state.auth_role = None
     st.session_state.auth_token = None
     st.session_state.user_cart = {}
+    st.session_state.linker = None
+    _clear_auth_from_url()
 
-
-def _show_login(db):
+def _show_login(linker):
     st.subheader("Login")
     with st.form("login_form"):
         nickname = st.text_input("Nickname")
@@ -134,23 +275,27 @@ def _show_login(db):
         login = st.form_submit_button("Login")
         if login:
             try:
-                auth_data = db.authenticate_user(nickname, password)
+                auth_data = linker.authenticate_user(nickname, password)
                 st.session_state.auth_user = auth_data.get("user")
                 
-                roles = auth_data.get("roles", [])
-                st.session_state.auth_roles = "admin" if "admin" in roles else "customer"
-                st.session_state.auth_token = auth_data.get("token")
+                st.session_state.auth_role = auth_data.get("role", "customer")
                 
-                db = CloudStoreDB(token=st.session_state.auth_token)
-                st.session_state.db = db
+                st.session_state.auth_token = auth_data.get("token")
+                _persist_auth_in_url(
+                    st.session_state.auth_token,
+                    st.session_state.auth_role,
+                    (st.session_state.auth_user or {}).get("nickname", nickname),
+                )
+                
+                linker = Linker(token=st.session_state.auth_token)
+                st.session_state.linker = linker
                 
                 st.success("Login successful")
                 st.rerun()
             except Exception as e:
                 st.error(str(e))
 
-
-def _render_customer_view(db, current_user):
+def _render_customer_view(linker, current_user):
     _inject_compact_shop_styles()
 
     c1, c2 = st.columns([4, 1])
@@ -161,8 +306,8 @@ def _render_customer_view(db, current_user):
 
     st.caption("Browse products by category, choose quantities and complete checkout")
 
-    all_products = db.list_products()
-    categories = db.list_product_categories()
+    all_products = linker.list_products()
+    categories = linker.list_product_categories()
     if not categories:
         categories = sorted({
             _product_category(p).strip()
@@ -194,7 +339,7 @@ def _render_customer_view(db, current_user):
     if selected_category == "All":
         products = all_products
     else:
-        products = db.list_products_by_category(selected_category)
+        products = linker.list_products_by_category(selected_category)
 
     shop_tab, cart_tab = st.tabs(["Catalog", "Cart"])
 
@@ -300,7 +445,7 @@ def _render_customer_view(db, current_user):
         default_customer_category = permission.get("category", "Customer")
         customer_name = current_user.get("nickname", "")
         try:
-            checkout_context = db.get_customer_checkout_context(customer_name, cart_items)
+            checkout_context = linker.get_customer_checkout_context(customer_name, cart_items)
             default_customer_category = checkout_context.get("customerCategory", default_customer_category)
             db_discount = float(checkout_context.get("discount", 0.0))
             discount_source = checkout_context.get("discountSource", "recent_average_discount")
@@ -334,7 +479,7 @@ def _render_customer_view(db, current_user):
 
             if checkout:
                 try:
-                    result = db.process_cart_order(
+                    result = linker.process_cart_order(
                         customer_name=customer_name,
                         payment_method=payment_method,
                         city=city,
@@ -363,8 +508,7 @@ def _render_customer_view(db, current_user):
                         raise
                     st.error(str(e))
 
-
-def _render_admin_view(db, current_user):
+def _render_admin_view(linker, current_user):
     c1, c2 = st.columns([4, 1])
     c1.subheader(f"Admin Control Panel - {current_user.get('nickname', '')}")
     if c2.button("Logout", key="logout_admin"):
@@ -372,18 +516,38 @@ def _render_admin_view(db, current_user):
         st.rerun()
 
     tabs = st.tabs([
-        "Dashboard",
+        "Overview",
+        "Statistics",
         "Orders",
         "Products",
         "Users",
-        "Permissions",
         "Transactions",
         "User Profile",
     ])
 
     with tabs[0]:
+        st.subheader("Trending Items")
+        limit = st.number_input("How many recent transactions", min_value=10, max_value=500, value=100, key="admin_overview_limit")
+        top_n = st.number_input("Top items to show", min_value=3, max_value=30, value=10, key="admin_overview_top_n")
+
+        try:
+            recent_transactions = linker.list_transactions(int(limit))
+            _render_trending_section(
+                recent_transactions,
+                empty_msg="No recent transactions available",
+                missing_field_msg="Unable to build trending chart: product field not found in transactions",
+                ranking_caption="Ranking based on total quantity purchased in recent transactions",
+                top_n=int(top_n),
+            )
+
+            with st.expander("Show recent transactions table", expanded=False):
+                _show_table(recent_transactions)
+        except Exception as e:
+            st.error(f"Failed to load recent transactions: {str(e)}")
+
+    with tabs[1]:
         st.subheader("Aggregate Statistics")
-        stats = db.dashboard_stats()
+        stats = linker.dashboard_stats()
         c1, c2, c3, c4 = st.columns(4)
         c1.metric("Products", stats["total_products"])
         c2.metric("Users", stats["total_users"])
@@ -394,9 +558,9 @@ def _render_admin_view(db, current_user):
         c6.metric("Monthly transactions", stats["monthly_transactions"])
         c7.metric("Low-stock products", stats["low_stock_products"])
 
-    with tabs[1]:
+    with tabs[2]:
         st.subheader("Process Order (atomic)")
-        products = db.list_products()
+        products = linker.list_products()
         if not products:
             st.warning("No products available. Add one in the Products tab.")
         else:
@@ -416,7 +580,7 @@ def _render_admin_view(db, current_user):
 
                 if submitted:
                     try:
-                        result = db.process_order(
+                        result = linker.process_order(
                             customer_name=customer_name,
                             product_id=product_map[selected_product],
                             total_items=int(total_items),
@@ -433,7 +597,7 @@ def _render_admin_view(db, current_user):
                     except Exception as e:
                         st.error(str(e))
 
-    with tabs[2]:
+    with tabs[3]:
         st.subheader("Products")
         col_a, col_b = st.columns([1, 2])
 
@@ -447,7 +611,7 @@ def _render_admin_view(db, current_user):
                 save_product = st.form_submit_button("Save product")
                 if save_product:
                     try:
-                        db.save_product(name, category, float(price), int(stock))
+                        linker.save_product(name, category, float(price), int(stock))
                         st.success("Product saved")
                     except Exception as e:
                         st.error(str(e))
@@ -455,11 +619,11 @@ def _render_admin_view(db, current_user):
             st.markdown("### Low stock")
             threshold = st.number_input("Threshold", min_value=0, value=10)
             if st.button("Show low stock"):
-                _show_table(db.low_stock_products(int(threshold)))
+                _show_table(linker.low_stock_products(int(threshold)))
 
         with col_b:
             st.markdown("### Product list")
-            products = db.list_products()
+            products = linker.list_products()
             _show_table(products)
 
             if products:
@@ -467,14 +631,14 @@ def _render_admin_view(db, current_user):
                 delete_id = st.selectbox("Delete product ID", product_ids)
                 if st.button("Delete product"):
                     try:
-                        db.delete_product(delete_id)
+                        linker.delete_product(delete_id)
                         st.success("Product deleted")
                     except Exception as e:
                         st.error(str(e))
 
-    with tabs[3]:
+    with tabs[4]:
         st.subheader("Users")
-        perms = db.list_permissions()
+        perms = linker.list_permissions()
         perm_options = {f"#{p['id']} - {p['category']}": p["id"] for p in perms}
 
         with st.form("register_user_form"):
@@ -487,14 +651,14 @@ def _render_admin_view(db, current_user):
                 selected_perm = st.selectbox("Permission", list(perm_options.keys()))
             else:
                 selected_perm = None
-                st.warning("No permissions available: create one in the Permissions tab")
+                st.warning("No permissions available: create one from backend/admin setup")
             register = st.form_submit_button("Register user")
             if register:
                 if selected_perm is None:
                     st.error("Cannot register user without a permission")
                 else:
                     try:
-                        db.register_user(
+                        linker.register_user(
                             nickname=nickname,
                             name=name,
                             surname=surname,
@@ -507,33 +671,18 @@ def _render_admin_view(db, current_user):
                         st.error(str(e))
 
         st.markdown("### User list")
-        _show_table(db.list_users())
-
-    with tabs[4]:
-        st.subheader("Permissions")
-        with st.form("new_permission_form"):
-            category = st.text_input("Permission category")
-            save_perm = st.form_submit_button("Create permission")
-            if save_perm:
-                try:
-                    db.save_permission(category)
-                    st.success("Permission created")
-                except Exception as e:
-                    st.error(str(e))
-
-        st.markdown("### Permission list")
-        _show_table(db.list_permissions())
+        _show_table(linker.list_users())
 
     with tabs[5]:
         st.subheader("Recent transactions")
         limit = st.number_input("Limit", min_value=1, max_value=500, value=50)
-        _show_table(db.list_transactions(int(limit)))
+        _show_table(linker.list_transactions(int(limit)))
 
     with tabs[6]:
         st.subheader("User Profile")
         nickname = st.text_input("Customer nickname", value="Mario Rossi")
         if st.button("Load profile"):
-            profile = db.user_profile(nickname)
+            profile = linker.user_profile(nickname)
             if not profile:
                 st.info("User not found")
             else:
@@ -549,48 +698,229 @@ def _render_admin_view(db, current_user):
                 st.markdown("### Order history")
                 _show_table(profile["orders"])
 
+def _render_seller_view(linker, current_user):
+    """Seller dashboard and inventory management."""
+    c1, c2 = st.columns([4, 1])
+    c1.subheader(f"Seller Dashboard - {current_user.get('nickname', '')}")
+    if c2.button("Logout", key="logout_seller", use_container_width=True, type="secondary"):
+        _reset_session_after_logout()
+        st.rerun()
+
+    st.caption("Manage your inventory, track sales, and view customer insights")
+
+    with st.sidebar:
+        st.image(_user_icon_source(), width=74)
+        st.markdown("### Seller Info")
+        st.write(f"Nickname: {current_user.get('nickname', '')}")
+        st.write(f"Name: {current_user.get('name', '')}")
+        st.write(f"Email: {current_user.get('email', '')}")
+
+    tabs = st.tabs([
+        "Overview",
+        "Statistics",
+        "Inventory",
+        "Sales Orders",
+        "Top Customers",
+    ])
+
+    with tabs[0]:
+        st.subheader("Trending Items")
+        limit = st.number_input(
+            "How many recent sales orders",
+            min_value=10,
+            max_value=500,
+            value=100,
+            key="seller_overview_limit",
+        )
+        top_n = st.number_input("Top items to show", min_value=3, max_value=30, value=10, key="seller_overview_top_n")
+
+        try:
+            recent_orders = linker.get_seller_sales_orders(int(limit))
+            _render_trending_section(
+                recent_orders,
+                empty_msg="No sales orders available",
+                missing_field_msg="Unable to build trending chart: product field not found in sales orders",
+                ranking_caption="Ranking based on total quantity sold in recent orders",
+                top_n=int(top_n),
+            )
+
+            with st.expander("Show recent sales table", expanded=False):
+                _show_table(recent_orders)
+        except Exception as e:
+            if "token" in str(e).lower():
+                raise
+            st.error(f"Failed to load recent sales: {str(e)}")
+
+    with tabs[1]:
+        st.subheader("Sales Overview")
+        try:
+            stats = linker.get_seller_dashboard_stats()
+            c1, c2, c3, c4 = st.columns(4)
+            c1.metric("Total Revenue", f"EUR {stats['total_revenue']:.2f}")
+            c2.metric("Orders Received", stats["total_orders"])
+            c3.metric("Avg Order Value", f"EUR {stats['average_order_value']:.2f}")
+            c4.metric("Products Sold", stats["products_sold"])
+            
+            c5, c6 = st.columns(2)
+            c5.metric("Total Sales Volume", f"EUR {stats['total_sales']:.2f}")
+            c6.metric("Low Stock Products", stats["low_stock_products"])
+        except Exception as e:
+            if "token" in str(e).lower():
+                raise
+            st.error(f"Failed to load dashboard stats: {str(e)}")
+
+    with tabs[2]:
+        st.subheader("Inventory Management")
+        try:
+            products = linker.get_seller_products()
+            if not products:
+                st.info("You don't have any products yet")
+            else:
+                for product in products:
+                    product_id = int(product["id"])
+                    stock = int(product["stock"])
+                    price = float(product["price"])
+                    category = _product_category(product)
+
+                    with st.container(border=True):
+                        p0, p1, p2 = st.columns([1.3, 5, 3.7], vertical_alignment="center")
+                        p0.image(_product_image_source(product), width=100)
+                        
+                        p1.markdown(f"**{product['name']}**")
+                        p1.caption(f"{category} | EUR {price:.2f}")
+                        
+                        with p2.form(f"stock_update_form_{product_id}"):
+                            f1, f2 = st.columns([1.5, 1.5], vertical_alignment="bottom")
+                            new_stock = f1.number_input(
+                                "Stock",
+                                min_value=0,
+                                value=stock,
+                                key=f"stock_input_{product_id}",
+                            )
+                            update_clicked = f2.form_submit_button(
+                                "Update",
+                                type="primary",
+                                use_container_width=True,
+                            )
+                            
+                            if update_clicked and new_stock != stock:
+                                try:
+                                    linker.update_seller_product_stock(product_id, int(new_stock))
+                                    st.success(f"Stock updated to {int(new_stock)}")
+                                    st.rerun()
+                                except Exception as e:
+                                    if "token" in str(e).lower():
+                                        raise
+                                    st.error(f"Failed to update stock: {str(e)}")
+        except Exception as e:
+            if "token" in str(e).lower():
+                raise
+            st.error(f"Failed to load inventory: {str(e)}")
+
+    with tabs[3]:
+        st.subheader("Recent Sales Orders")
+        try:
+            limit = st.number_input("Show last", min_value=5, max_value=500, value=50, key="seller_orders_limit")
+            orders = linker.get_seller_sales_orders(int(limit))
+            
+            if not orders:
+                st.info("No sales orders yet")
+            else:
+                display_orders = []
+                total_revenue = 0.0
+                for order in orders:
+                    total_revenue += float(order.get("totalCost", 0.0))
+                    display_orders.append({
+                        "Order ID": order.get("id"),
+                        "Customer": order.get("customerName"),
+                        "Product": order.get("product"),
+                        "Quantity": order.get("totalItems"),
+                        "Total": f"EUR {float(order.get('totalCost', 0.0)):.2f}",
+                        "Payment": order.get("paymentMethod"),
+                        "City": order.get("city"),
+                    })
+                
+                _show_table(display_orders)
+                st.metric("Total Revenue from Displayed Orders", f"EUR {total_revenue:.2f}")
+        except Exception as e:
+            if "token" in str(e).lower():
+                raise
+            st.error(f"Failed to load sales orders: {str(e)}")
+
+    with tabs[4]:
+        st.subheader("Top Customers")
+        try:
+            limit = st.number_input("Show top", min_value=5, max_value=20, value=5, key="seller_customers_limit")
+            customers = linker.get_seller_top_customers(int(limit))
+            
+            if not customers:
+                st.info("No customer data yet")
+            else:
+                display_customers = []
+                for customer in customers:
+                    display_customers.append({
+                        "Customer": customer.get("customerName"),
+                        "Total Orders": customer.get("orderCount", 0),
+                        "Total Spent": f"EUR {float(customer.get('totalSpent', 0.0)):.2f}",
+                        "Last Order": customer.get("lastOrderDate", "N/A"),
+                    })
+                
+                _show_table(display_customers)
+        except Exception as e:
+            if "token" in str(e).lower():
+                raise
+            st.error(f"Failed to load customer data: {str(e)}")
 
 def main():
     if "user_cart" not in st.session_state:
         st.session_state.user_cart = {}
     if "auth_user" not in st.session_state:
         st.session_state.auth_user = None
-    if "auth_roles" not in st.session_state:
-        st.session_state.auth_roles = None
+    if "auth_role" not in st.session_state:
+        st.session_state.auth_role = "customer"
     if "auth_token" not in st.session_state:
         st.session_state.auth_token = None
 
-    token = st.session_state.get("auth_token")
-    db = CloudStoreDB(token=token) if token else CloudStoreDB()
+    if st.session_state.auth_user is None and not st.session_state.auth_token:
+        _restore_session_from_url()
 
-    user_roles = st.session_state.auth_roles
+    token = st.session_state.get("auth_token")
+    linker = Linker(token=token) if token else Linker()
 
     try:
-        db.fetch_one("SELECT 1 as ok")
+        linker.fetch_one("SELECT 1 as ok")
     except Exception as e:
-        st.error(f"DB connection failed: {e}")
+        st.error(f"Linker connection failed: {e}")
         st.stop()
 
     if st.session_state.auth_user is None:
-        _show_login(db)
+        _show_login(linker)
         return
 
     try:
-        if "admin" in user_roles:
-            if not st.session_state.auth_token:
-                st.error("Missing admin session credentials, please login again")
-                _reset_session_after_logout()
-                st.rerun()
-            _render_admin_view(db, st.session_state.auth_user)
-        else:
-            _render_customer_view(db, st.session_state.auth_user)
+        role = st.session_state.get("auth_role", "customer")
+        _enable_auto_refresh(role)
+        
+        VIEWS = {
+            "customer": _render_customer_view,
+            "admin": _render_admin_view,
+            "seller": _render_seller_view,
+        }
+
+        view_func = VIEWS.get(role, _render_customer_view)
+            
+        if role != "customer" and not st.session_state.auth_token:
+            st.error(f"Missing {role} session credentials, please login again")
+            _reset_session_after_logout()
+            st.rerun()
+            
+        view_func(linker, st.session_state.auth_user)
     except Exception as e:
         if "token" in str(e).lower():
             _reset_session_after_logout()
             st.warning("Session expired. Please login again.")
             st.rerun()
         raise
-
 
 if __name__ == "__main__":
     main()

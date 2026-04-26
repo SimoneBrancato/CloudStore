@@ -1,3 +1,5 @@
 streamlit==1.43.2
+streamlit-autorefresh==1.0.1
 pandas==2.2.3
 requests==2.31.0
+PyJWT==2.12.1

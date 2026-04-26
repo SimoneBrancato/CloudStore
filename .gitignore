@@ -1,0 +1,6 @@
+.gitignore
+.env
+mysql
+target
+webui/
+assets/

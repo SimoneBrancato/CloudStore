@@ -3,13 +3,19 @@ services:
     image: mysql:8.0.45
     env_file:
       - .env
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    command: --port=${DB_PORT}
     volumes:
       - mysql-data:/var/lib/mysql
       - ./mysql:/docker-entrypoint-initdb.d
     ports:
-      - "127.0.0.1:3307:3306"
+      - "127.0.0.1:${DB_PORT}:${DB_PORT}"
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-P", "${DB_PORT}", "-u", "root", "-p${DB_PASSWORD}"]
       timeout: 20s
       retries: 10
     networks:
@@ -17,28 +23,48 @@ services:
 
   server:
     build:
-      context: ./src/server
+      context: ./src/main/java/com/cloudstore/server
       dockerfile: Dockerfile
     env_file:
       - .env
     environment:
       DB_HOST: mysql
-      DB_PORT: 3306
-      DB_NAME: ${MYSQL_DATABASE}
-      DB_USER: ${MYSQL_USER}
-      DB_PASSWORD: ${MYSQL_PASSWORD}
+      DB_PORT: ${DB_PORT}
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRATION_MS: ${JWT_EXPIRATION_MS}
       JWT_ISSUER: ${JWT_ISSUER}
       JWT_AUDIENCE: ${JWT_AUDIENCE}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
     depends_on:
       mysql:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     ports:
       - "127.0.0.1:9999:9999"
     networks:
       - cloudstore-network
     restart: unless-stopped
+
+  redis:
+    image: redis:8.6.1   
+    container_name: redis
+    ports:
+      - "127.0.0.1:6379:6379"   
+    volumes:
+      - redis_data:/data
+    networks:
+      - cloudstore-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   client:
     build:
@@ -59,6 +85,7 @@ services:
 
 volumes:
   mysql-data:
+  redis_data:
 
 networks:
   cloudstore-network:
