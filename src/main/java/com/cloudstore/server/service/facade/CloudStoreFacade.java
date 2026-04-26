@@ -338,32 +338,14 @@ public class CloudStoreFacade {
 
     // AUTH
 
-    /**
-     * Authenticates a user with the provided nickname and password.
-     * @param nickname The user's nickname.
-     * @param password The user's password.
-     * @return A LoginResult containing authentication status and token if successful.
-     * @throws ServiceException If an error occurs during authentication.
-    **/
     public LoginResult authenticateUser(String nickname, String password) throws ServiceException {
         return authService.authenticateUser(nickname, password);
     }
 
-    /**
-     * Retrieves the authentication session/context associated with a JWT token.
-     * @param token The JWT token to validate.
-     * @return An AuthenticationResult containing user details and roles.
-     * @throws ServiceException If the token is invalid, expired, or an error occurs.
-    **/
     public AuthenticationResult getSessionFromToken(String token) throws ServiceException {
         return authService.getSessionFromToken(token);
     }
 
-    /**
-     * Logs out a user by invalidating their current session token.
-     * @param token The session token to invalidate.
-     * @throws ServiceException If an error occurs during logout.
-    **/
     public void logout(String token) throws ServiceException {
         authService.logout(token);
     }

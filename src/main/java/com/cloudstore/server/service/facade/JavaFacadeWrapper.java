@@ -108,6 +108,13 @@ public class JavaFacadeWrapper {
             }
         }
 
+        /** 
+             * Sends a JSON response with the specified status code and body.
+             * @param exchange The HttpExchange object to send the response through.
+             * @param statusCode The HTTP status code to set in the response.
+             * @param body The body of the response, which will be serialized to JSON.
+             * @throws IOException If an I/O error occurs while sending the response.
+        **/
         private void sendJsonResponse(HttpExchange exchange, int statusCode, Object body) throws IOException {
             byte[] responseBytes = MAPPER.writeValueAsBytes(body);
             exchange.getResponseHeaders().set("Content-Type", "application/json");
@@ -117,6 +124,12 @@ public class JavaFacadeWrapper {
             }
         }
 
+        /** 
+             * Handles exceptions that occur during request processing and sends an appropriate JSON error response.
+             * @param exchange The HttpExchange object to send the response through.
+             * @param t The Throwable that was caught during request processing.
+             * @throws IOException If an I/O error occurs while sending the response.
+        **/
         private void handleException(HttpExchange exchange, Throwable t) throws IOException {
             Throwable cause = (t instanceof InvocationTargetException) ? t.getCause() : t;
             int statusCode = resolveStatusCode(cause);

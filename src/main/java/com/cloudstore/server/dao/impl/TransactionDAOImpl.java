@@ -478,6 +478,11 @@ public class TransactionDAOImpl implements TransactionDAO {
         return 0;
     }
 
+    /** 
+         * Counts the number of distinct products sold based on the transactions in the database.
+         * @return the count of distinct products sold
+         * @throws SQLException if a database error occurs
+    */
     @Override
     public int countDistinctProductsSold() throws SQLException {
         try (Connection conn = dbConnection.getConnection();
@@ -491,6 +496,12 @@ public class TransactionDAOImpl implements TransactionDAO {
         return 0;
     }
 
+    /**
+        * Finds the top customers based on total spending. This method retrieves a list of customers along with their total order count, total amount spent, and the date of their last order.
+        * @param limit the maximum number of top customers to retrieve
+        * @return a list of TopCustomerSummary objects representing the top customers
+        * @throws SQLException if a database error occurs
+    **/
     @Override
     public List<TopCustomerSummary> findTopCustomers(int limit) throws SQLException {
         List<TopCustomerSummary> topCustomers = new ArrayList<>();
