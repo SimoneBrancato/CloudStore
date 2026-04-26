@@ -2,11 +2,10 @@ package com.cloudstore.server.service.impl;
 
 import com.cloudstore.server.dao.impl.TransactionDAOImpl;
 import com.cloudstore.server.dao.interfaces.TransactionDAO;
-import com.cloudstore.server.model.dto.TransactionDTO;
 import com.cloudstore.server.model.entities.Transaction;
+import com.cloudstore.server.model.domain.TopCustomerSummary;
 import com.cloudstore.server.service.exception.ServiceException;
 import com.cloudstore.server.service.interfaces.TransactionService;
-import com.cloudstore.server.service.mapper.DTOMapper;
 
 import java.sql.SQLException;
 import java.time.LocalDateTime;
@@ -46,9 +45,9 @@ public class TransactionServiceImpl implements TransactionService {
         * @throws ServiceException If an error occurs while retrieving the transaction from the database.
     **/
     @Override
-    public Optional<TransactionDTO> findById(long id) throws ServiceException {
+    public Optional<Transaction> findById(long id) throws ServiceException {
         try {
-            return transactionDAO.findById(id).map(DTOMapper::toDTO);
+            return transactionDAO.findById(id);
         } catch (SQLException e) {
             throw new ServiceException("Error retrieving transaction ID: " + id, e);
         }
@@ -61,10 +60,10 @@ public class TransactionServiceImpl implements TransactionService {
         * @throws ServiceException If an error occurs while searching for transactions by customer name.
     **/
     @Override
-    public List<TransactionDTO> findByCustomer(String customerName) throws ServiceException {
+    public List<Transaction> findByCustomer(String customerName) throws ServiceException {
         try {
             return transactionDAO.findByCustomer(customerName).stream()
-                    .map(DTOMapper::toDTO)
+                    
                     .collect(Collectors.toList());
         } catch (SQLException e) {
             throw new ServiceException("Error searching transactions by customer: " + customerName, e);
@@ -78,10 +77,10 @@ public class TransactionServiceImpl implements TransactionService {
         * @throws ServiceException If an error occurs while searching for transactions by total cost.
     **/
     @Override
-    public List<TransactionDTO> findByProduct(int productId) throws ServiceException {
+    public List<Transaction> findByProduct(int productId) throws ServiceException {
         try {
             return transactionDAO.findByProduct(productId).stream()
-                    .map(DTOMapper::toDTO)
+                    
                     .collect(Collectors.toList());
         } catch (SQLException e) {
             throw new ServiceException("Error searching transactions by product ID: " + productId, e);
@@ -95,10 +94,10 @@ public class TransactionServiceImpl implements TransactionService {
         * @throws ServiceException If an error occurs while searching for transactions by total cost.
     **/
     @Override
-    public List<TransactionDTO> findRecentByProduct(int productId, int limit) throws ServiceException {
+    public List<Transaction> findRecentByProduct(int productId, int limit) throws ServiceException {
         try {
             return transactionDAO.findRecentByProduct(productId, limit).stream()
-                    .map(DTOMapper::toDTO)
+                    
                     .collect(Collectors.toList());
         } catch (SQLException e) {
             throw new ServiceException("Error searching recent transactions for product ID: " + productId, e);
@@ -113,13 +112,13 @@ public class TransactionServiceImpl implements TransactionService {
         * @throws ServiceException If an error occurs while searching for transactions by date range, or if the date range is invalid.
     **/
     @Override
-    public List<TransactionDTO> findByDateRange(LocalDateTime start, LocalDateTime end) throws ServiceException {
+    public List<Transaction> findByDateRange(LocalDateTime start, LocalDateTime end) throws ServiceException {
         if (start.isAfter(end)) {
             throw new ServiceException("Start date cannot be after end date");
         }
         try {
             return transactionDAO.findByDateRange(start, end).stream()
-                    .map(DTOMapper::toDTO)
+                    
                     .collect(Collectors.toList());
         } catch (SQLException e) {
             throw new ServiceException("Error searching transactions by date range", e);
@@ -133,10 +132,10 @@ public class TransactionServiceImpl implements TransactionService {
         * @throws ServiceException If an error occurs while searching for transactions by payment method.
     **/
     @Override
-    public List<TransactionDTO> findByPaymentMethod(String paymentMethod) throws ServiceException {
+    public List<Transaction> findByPaymentMethod(String paymentMethod) throws ServiceException {
         try {
             return transactionDAO.findByPaymentMethod(paymentMethod).stream()
-                    .map(DTOMapper::toDTO)
+                    
                     .collect(Collectors.toList());
         } catch (SQLException e) {
             throw new ServiceException("Error searching transactions by payment method", e);
@@ -150,10 +149,10 @@ public class TransactionServiceImpl implements TransactionService {
         * @throws ServiceException If an error occurs while searching for transactions by city.
     **/
     @Override
-    public List<TransactionDTO> findByCity(String city) throws ServiceException {
+    public List<Transaction> findByCity(String city) throws ServiceException {
         try {
             return transactionDAO.findByCity(city).stream()
-                    .map(DTOMapper::toDTO)
+                    
                     .collect(Collectors.toList());
         } catch (SQLException e) {
             throw new ServiceException("Error searching transactions by city: " + city, e);
@@ -166,10 +165,10 @@ public class TransactionServiceImpl implements TransactionService {
         * @throws ServiceException If an error occurs while retrieving transactions from the database.
     **/
     @Override
-    public List<TransactionDTO> findAll() throws ServiceException {
+    public List<Transaction> findAll() throws ServiceException {
         try {
             return transactionDAO.findAll().stream()
-                    .map(DTOMapper::toDTO)
+                    
                     .collect(Collectors.toList());
         } catch (SQLException e) {
             throw new ServiceException("Error retrieving transactions", e);
@@ -183,11 +182,10 @@ public class TransactionServiceImpl implements TransactionService {
         * @throws ServiceException If validation fails or if an error occurs while saving the transaction to the database.
     **/
     @Override
-    public TransactionDTO save(TransactionDTO dto) throws ServiceException {
-        validate(dto);
+    public Transaction save(Transaction transaction) throws ServiceException {
+        validate(transaction);
         try {
-            Transaction saved = transactionDAO.save(DTOMapper.toEntity(dto));
-            return DTOMapper.toDTO(saved);
+            return transactionDAO.save(transaction);
         } catch (SQLException e) {
             throw new ServiceException("Error saving transaction", e);
         }
@@ -253,13 +251,13 @@ public class TransactionServiceImpl implements TransactionService {
         * @throws ServiceException If an error occurs while retrieving recent transactions, or if the limit is invalid.
     **/
     @Override
-    public List<TransactionDTO> findRecentTransactions(int limit) throws ServiceException {
+    public List<Transaction> findRecentTransactions(int limit) throws ServiceException {
         if (limit <= 0) {
             throw new ServiceException("Limit must be a positive number");
         }
         try {
             return transactionDAO.findRecentTransactions(limit).stream()
-                    .map(DTOMapper::toDTO)
+                    
                     .collect(Collectors.toList());
         } catch (SQLException e) {
             throw new ServiceException("Error retrieving recent transactions", e);
@@ -316,7 +314,7 @@ public class TransactionServiceImpl implements TransactionService {
         * @throws ServiceException If an error occurs while retrieving the top customers, such as SQL exceptions.
     **/
     @Override
-    public List<java.util.Map<String, Object>> findTopCustomers(int limit) throws ServiceException {
+    public List<TopCustomerSummary> findTopCustomers(int limit) throws ServiceException {
         try {
             return transactionDAO.findTopCustomers(limit);
         } catch (SQLException e) {
@@ -329,17 +327,17 @@ public class TransactionServiceImpl implements TransactionService {
         * @param dto The TransactionDTO to validate.
         * @throws ServiceException If any validation rules are violated, such as missing required fields or invalid values.
     **/
-    private void validate(TransactionDTO dto) throws ServiceException {
-        if (dto.getCustomerName() == null || dto.getCustomerName().isBlank()) {
+    private void validate(Transaction transaction) throws ServiceException {
+        if (transaction.CustomerName() == null || transaction.CustomerName().isBlank()) {
             throw new ServiceException("Customer name cannot be empty");
         }
-        if (dto.getTotalItems() <= 0) {
+        if (transaction.TotalItems() <= 0) {
             throw new ServiceException("Number of items must be greater than zero");
         }
-        if (dto.getTotalCost() < 0) {
+        if (transaction.TotalCost() < 0) {
             throw new ServiceException("Total cost cannot be negative");
         }
-        if (dto.getProductDetails() == null) {
+        if (transaction.Product() == null) {
             throw new ServiceException("Transaction must be associated with a product");
         }
     }

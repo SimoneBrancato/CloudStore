@@ -3,6 +3,7 @@ package com.cloudstore.server.dao.impl;
 import com.cloudstore.server.dao.interfaces.TransactionDAO;
 import com.cloudstore.server.model.entities.Transaction;
 import com.cloudstore.server.model.entities.Product;
+import com.cloudstore.server.model.domain.TopCustomerSummary;
 import com.cloudstore.server.utils.DatabaseConnection;
 
 import java.sql.*;
@@ -10,7 +11,6 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.Map;
 
 public class TransactionDAOImpl implements TransactionDAO {
     
@@ -478,11 +478,6 @@ public class TransactionDAOImpl implements TransactionDAO {
         return 0;
     }
 
-    /** 
-        * Counts the number of distinct products sold in all transactions.
-        * @return the count of distinct products sold
-        * @throws SQLException if a database error occurs 
-    */
     @Override
     public int countDistinctProductsSold() throws SQLException {
         try (Connection conn = dbConnection.getConnection();
@@ -496,14 +491,9 @@ public class TransactionDAOImpl implements TransactionDAO {
         return 0;
     }
 
-    /**
-        * Deletes all transactions from the database. This method is used for testing purposes to reset the transaction data.
-        * @return true if transactions were deleted, false otherwise
-        * @throws SQLException if a database error occurs
-    **/
     @Override
-    public List<Map<String, Object>> findTopCustomers(int limit) throws SQLException {
-        List<java.util.Map<String, Object>> topCustomers = new ArrayList<>();
+    public List<TopCustomerSummary> findTopCustomers(int limit) throws SQLException {
+        List<TopCustomerSummary> topCustomers = new ArrayList<>();
         String sql = "SELECT Customer_Name, COUNT(*) as orderCount, SUM(Total_Cost) as totalSpent, MAX(Date) as lastOrderDate " +
                      "FROM transactions GROUP BY Customer_Name ORDER BY totalSpent DESC LIMIT ?";
                      
@@ -514,12 +504,12 @@ public class TransactionDAOImpl implements TransactionDAO {
             
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
-                    java.util.Map<String, Object> customer = new java.util.HashMap<>();
-                    customer.put("customerName", rs.getString("Customer_Name"));
-                    customer.put("orderCount", rs.getInt("orderCount"));
-                    customer.put("totalSpent", rs.getDouble("totalSpent"));
-                    customer.put("lastOrderDate", rs.getTimestamp("lastOrderDate").toLocalDateTime());
-                    topCustomers.add(customer);
+                    topCustomers.add(new TopCustomerSummary(
+                        rs.getString("Customer_Name"),
+                        rs.getInt("orderCount"),
+                        rs.getDouble("totalSpent"),
+                        rs.getTimestamp("lastOrderDate").toLocalDateTime()
+                    ));
                 }
             }
         }

@@ -4,15 +4,14 @@ import com.cloudstore.server.dao.impl.ProductDAOImpl;
 import com.cloudstore.server.dao.impl.TransactionDAOImpl;
 import com.cloudstore.server.dao.interfaces.ProductDAO;
 import com.cloudstore.server.dao.interfaces.TransactionDAO;
-import com.cloudstore.server.model.dto.ProductDTO;
-import com.cloudstore.server.model.dto.TransactionDTO;
+import com.cloudstore.server.model.domain.CartOrderResult;
+import com.cloudstore.server.model.domain.CheckoutContext;
 import com.cloudstore.server.model.entities.Product;
 import com.cloudstore.server.model.entities.Transaction;
 import com.cloudstore.server.service.exception.ServiceException;
 import com.cloudstore.server.service.interfaces.CartService;
 import com.cloudstore.server.service.interfaces.TransactionService;
 import com.cloudstore.server.service.interfaces.UserService;
-import com.cloudstore.server.service.mapper.DTOMapper;
 import com.cloudstore.server.utils.DatabaseConnection;
 
 import java.sql.Connection;
@@ -63,22 +62,22 @@ public class CartServiceImpl implements CartService {
         * @throws ServiceException If an error occurs while retrieving the checkout context.
      */
     @Override
-    public Map<String, Object> getCheckoutContext(String customerName, Map<Integer, Integer> items) throws ServiceException {
+    public CheckoutContext getCheckoutContext(String customerName, Map<Integer, Integer> items) throws ServiceException {
         Map<Integer, Integer> normalizedItems = normalizeItemsMap(items);
         
         String customerCategory = userService.resolveCustomerCategory(customerName);
         float discount = calculateDiscountForCart(normalizedItems);
         int discountSourceSize = getDiscountSourceSize(normalizedItems);
 
-        Map<String, Object> context = new HashMap<>();
-        context.put("customerName", customerName);
-        context.put("customerCategory", customerCategory);
-        context.put("discount", discount);
-        context.put("discountApplied", discount > 0 ? 1 : 0);
-        context.put("discountSource", discountSourceSize > 0 ? "recent_product_average_discount" : "no_product_history");
-        context.put("sampleSize", discountSourceSize);
-        context.put("sampleWindow", 5);
-        return context;
+        return new CheckoutContext(
+            customerName,
+            customerCategory,
+            discount,
+            discount > 0 ? 1 : 0,
+            discountSourceSize > 0 ? "recent_product_average_discount" : "no_product_history",
+            discountSourceSize,
+            5
+        );
     }
 
     /** 
@@ -88,44 +87,46 @@ public class CartServiceImpl implements CartService {
         * @throws ServiceException If an error occurs while processing the order.
     **/
     @Override
-    public TransactionDTO processSingleOrder(TransactionDTO dto) throws ServiceException {
-        validateOrder(dto);
+    public Transaction processSingleOrder(Transaction transaction) throws ServiceException {
+        validateOrder(transaction);
 
-        if (dto.getDate() == null) {
-            dto.setDate(LocalDateTime.now());
-        }
-
-        float normalizedDiscount = Math.max(0.0f, Math.min(dto.getDiscount(), 1.0f));
-        dto.setDiscount(normalizedDiscount);
-        dto.setDiscountApplied(normalizedDiscount > 0 ? 1 : 0);
+        LocalDateTime orderDate = transaction.date() == null ? LocalDateTime.now() : transaction.date();
+        float normalizedDiscount = Math.max(0.0f, Math.min(transaction.Discount(), 1.0f));
+        int discountApplied = normalizedDiscount > 0 ? 1 : 0;
 
         try (Connection conn = dbConnection.getConnection()) {
             conn.setAutoCommit(false);
             try {
-                int productId = dto.getProductDetails().getId();
+                int productId = transaction.ProductID() != null ? transaction.ProductID().id() : -1;
+                if (productId == -1) throw new ServiceException("Product not specified");
+
                 Product product = productDAO.findByIdForUpdate(conn, productId)
                     .orElseThrow(() -> new ServiceException("Product not found with ID: " + productId));
 
-                if (product.stock() < dto.getTotalItems()) {
+                if (product.stock() < transaction.TotalItems()) {
                     throw new ServiceException(String.format(
                         "Insufficient stock for '%s': available %d, requested %d",
-                        product.name(), product.stock(), dto.getTotalItems()));
+                        product.name(), product.stock(), transaction.TotalItems()));
                 }
 
-                double grossTotal = product.price() * dto.getTotalItems();
+                double grossTotal = product.price() * transaction.TotalItems();
                 double netTotal = grossTotal * (1 - normalizedDiscount);
-                dto.setProduct(product.name());
-                dto.setTotalCost(netTotal);
+                
+                Transaction toSave = new Transaction(
+                    transaction.id(), orderDate, transaction.CustomerName(), product.name(),
+                    transaction.TotalItems(), netTotal, transaction.PaymentMethod(), transaction.City(),
+                    discountApplied, transaction.CustomerCategory(), normalizedDiscount, product
+                );
 
-                Transaction saved = transactionDAO.save(conn, DTOMapper.toEntity(dto));
-                boolean stockUpdated = productDAO.updateStock(conn, productId, product.stock() - dto.getTotalItems());
+                Transaction saved = transactionDAO.save(conn, toSave);
+                boolean stockUpdated = productDAO.updateStock(conn, productId, product.stock() - transaction.TotalItems());
 
                 if (!stockUpdated) {
                     throw new ServiceException("Stock update failed for product ID: " + productId);
                 }
 
                 conn.commit();
-                return DTOMapper.toDTO(saved);
+                return saved;
             } catch (Exception e) {
                 try {
                     if (!conn.isClosed()) {
@@ -153,8 +154,8 @@ public class CartServiceImpl implements CartService {
         * @throws ServiceException If an error occurs while processing the cart order.
     **/
     @Override
-    public Map<String, Object> processCartOrder(String customerName, String paymentMethod,
-                                                String city, Map<Integer, Integer> items) throws ServiceException {
+    public CartOrderResult processCartOrder(String customerName, String paymentMethod,
+                                            String city, Map<Integer, Integer> items) throws ServiceException {
         Map<Integer, Integer> normalizedItems = normalizeItemsMap(items);
         
         validateCartOrder(customerName, normalizedItems);
@@ -169,7 +170,7 @@ public class CartServiceImpl implements CartService {
         try (Connection conn = dbConnection.getConnection()) {
             conn.setAutoCommit(false);
             try {
-                List<TransactionDTO> createdTransactions = new ArrayList<>();
+                List<Transaction> createdTransactions = new ArrayList<>();
                 double cartTotal = 0.0;
                 int totalItems = 0;
 
@@ -187,31 +188,25 @@ public class CartServiceImpl implements CartService {
                     }
 
                     double lineTotal = product.price() * quantity * (1 - discount);
-                    TransactionDTO dto = createTransactionDTO(customerName, paymentMethod, city,
+                    Transaction tx = createTransaction(customerName, paymentMethod, city,
                                                              customerCategory, discount, now,
                                                              product, quantity, lineTotal);
 
-                    Transaction saved = transactionDAO.save(conn, DTOMapper.toEntity(dto));
+                    Transaction saved = transactionDAO.save(conn, tx);
                     boolean stockUpdated = productDAO.updateStock(conn, productId, product.stock() - quantity);
 
                     if (!stockUpdated) {
                         throw new ServiceException("Stock update failed for product ID: " + productId);
                     }
 
-                    TransactionDTO savedDto = DTOMapper.toDTO(saved);
-                    createdTransactions.add(savedDto);
-                    cartTotal += savedDto.getTotalCost();
-                    totalItems += savedDto.getTotalItems();
+                    createdTransactions.add(saved);
+                    cartTotal += saved.TotalCost();
+                    totalItems += saved.TotalItems();
                 }
 
                 conn.commit();
 
-                Map<String, Object> result = new HashMap<>();
-                result.put("transactions", createdTransactions);
-                result.put("totalItems", totalItems);
-                result.put("cartTotal", cartTotal);
-                result.put("lines", createdTransactions.size());
-                return result;
+                return new CartOrderResult(createdTransactions, totalItems, cartTotal, createdTransactions.size());
             } catch (Exception e) {
                 try {
                     if (!conn.isClosed()) {
@@ -286,7 +281,7 @@ public class CartServiceImpl implements CartService {
                 continue;
             }
 
-            List<TransactionDTO> productTransactions = transactionService
+            List<Transaction> productTransactions = transactionService
                     .findRecentByProduct(productId, 5);
 
             if (productTransactions.isEmpty()) {
@@ -294,7 +289,7 @@ public class CartServiceImpl implements CartService {
             }
 
             double productAverage = productTransactions.stream()
-                    .mapToDouble(tx -> Math.max(0.0f, Math.min(tx.getDiscount(), 1.0f)))
+                    .mapToDouble(tx -> Math.max(0.0f, Math.min(tx.Discount(), 1.0f)))
                     .average()
                     .orElse(0.0);
 
@@ -321,7 +316,7 @@ public class CartServiceImpl implements CartService {
         int totalSize = 0;
         for (Map.Entry<Integer, Integer> entry : items.entrySet()) {
             int productId = entry.getKey();
-            List<TransactionDTO> transactions = transactionService
+            List<Transaction> transactions = transactionService
                     .findRecentByProduct(productId, 5);
             totalSize += transactions.size();
         }
@@ -341,23 +336,13 @@ public class CartServiceImpl implements CartService {
         * @param lineTotal The total cost for the line item.
         * @return A new TransactionDTO instance initialized with the provided values.
     **/
-    private TransactionDTO createTransactionDTO(String customerName, String paymentMethod, String city,
+    private Transaction createTransaction(String customerName, String paymentMethod, String city,
                                                String customerCategory, float discount, LocalDateTime now,
                                                Product product, int quantity, double lineTotal) {
-        TransactionDTO dto = new TransactionDTO();
-        dto.setDate(now);
-        dto.setCustomerName(customerName);
-        dto.setProduct(product.name());
-        dto.setTotalItems(quantity);
-        dto.setTotalCost(lineTotal);
-        dto.setPaymentMethod(paymentMethod);
-        dto.setCity(city);
-        dto.setDiscountApplied(discount > 0 ? 1 : 0);
-        dto.setCustomerCategory(customerCategory);
-        dto.setDiscount(discount);
-        dto.setProductDetails(new ProductDTO(product.id(), product.name(), product.category(),
-                                            product.price(), product.stock()));
-        return dto;
+        return new Transaction(
+            0, now, customerName, product.name(), quantity, lineTotal, paymentMethod, city,
+            discount > 0 ? 1 : 0, customerCategory, discount, product
+        );
     }
     
     /** 
@@ -365,14 +350,14 @@ public class CartServiceImpl implements CartService {
         * @param dto The TransactionDTO to validate.
         * @throws ServiceException If the DTO is invalid, such as missing product details, non-positive item quantity, or empty customer name.
     **/
-    private void validateOrder(TransactionDTO dto) throws ServiceException {
-        if (dto.getProductDetails() == null) {
+    private void validateOrder(Transaction tx) throws ServiceException {
+        if (tx.ProductID() == null) {
             throw new ServiceException("Transaction must specify a product");
         }
-        if (dto.getTotalItems() <= 0) {
+        if (tx.TotalItems() <= 0) {
             throw new ServiceException("Number of items must be greater than zero");
         }
-        if (dto.getCustomerName() == null || dto.getCustomerName().isBlank()) {
+        if (tx.CustomerName() == null || tx.CustomerName().isBlank()) {
             throw new ServiceException("Customer name cannot be empty");
         }
     }

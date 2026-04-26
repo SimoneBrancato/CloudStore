@@ -3,7 +3,9 @@ package com.cloudstore.server.service.impl;
 import com.cloudstore.server.model.dto.UserDTO;
 import com.cloudstore.server.model.dto.auth.AuthenticationResult;
 import com.cloudstore.server.model.dto.auth.LoginResult;
+import com.cloudstore.server.model.entities.User;
 import com.cloudstore.server.service.auth.JWTService;
+import com.cloudstore.server.service.mapper.DTOMapper;
 import com.cloudstore.server.service.auth.PasswordHasher;
 import com.cloudstore.server.service.auth.TokenBlacklistService;
 import com.cloudstore.server.service.exception.ServiceException;
@@ -73,11 +75,11 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public LoginResult authenticateUser(String nickname, String password) throws ServiceException {
         
-        UserDTO user = authenticateCredentials(nickname, password);
+        User user = authenticateCredentials(nickname, password);
 
         Role assignedRole = Role.CUSTOMER;
-        if (user.getPermission() != null) {
-            assignedRole = Role.fromId(user.getPermission().getId());
+        if (user.PermissionID() != null) {
+            assignedRole = Role.fromId(user.PermissionID().id());
         }
 
         boolean isAdmin = (assignedRole == Role.ADMIN);
@@ -88,7 +90,7 @@ public class AuthServiceImpl implements AuthService {
         String token = jwtService.generateToken(nickname, roles);
 
         String role = roles.isEmpty() ? "customer" : roles.get(0);
-        return new LoginResult(token, user, role, isAdmin);
+        return new LoginResult(token, DTOMapper.toDTO(user), role, isAdmin);
     }
 
     /** 
@@ -150,18 +152,18 @@ public class AuthServiceImpl implements AuthService {
         * @return The authenticated UserDTO.
         * @throws ServiceException If authentication fails.
     **/
-    private UserDTO authenticateCredentials(String nickname, String password) throws ServiceException {
+    private User authenticateCredentials(String nickname, String password) throws ServiceException {
         
         if (nickname == null || nickname.isBlank() || password == null || password.isBlank()) {
             throw new ValidationException("Authentication failed: Missing credentials.");
         }
 
-        UserDTO user = userService.findByNickname(nickname)
+        User user = userService.findByNickname(nickname)
                 .orElseThrow(() -> {
                     return new UnauthorizedException("Invalid credentials");
                 });
         
-        String storedPassword = user.getPassword();
+        String storedPassword = user.password();
         boolean validPassword = PasswordHasher.matches(password, storedPassword) || password.equals(storedPassword);
         if (!validPassword) {
             throw new UnauthorizedException("Invalid credentials");

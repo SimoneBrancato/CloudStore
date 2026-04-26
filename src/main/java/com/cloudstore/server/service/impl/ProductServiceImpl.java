@@ -2,11 +2,9 @@ package com.cloudstore.server.service.impl;
 
 import com.cloudstore.server.dao.impl.ProductDAOImpl;
 import com.cloudstore.server.dao.interfaces.ProductDAO;
-import com.cloudstore.server.model.dto.ProductDTO;
 import com.cloudstore.server.model.entities.Product;
 import com.cloudstore.server.service.exception.ServiceException;
 import com.cloudstore.server.service.interfaces.ProductService;
-import com.cloudstore.server.service.mapper.DTOMapper;
 
 import java.sql.SQLException;
 import java.util.List;
@@ -45,9 +43,9 @@ public class ProductServiceImpl implements ProductService {
         * @throws ServiceException If an error occurs while retrieving the product from the database.
     **/
     @Override
-    public Optional<ProductDTO> findById(int id) throws ServiceException {
+    public Optional<Product> findById(int id) throws ServiceException {
         try {
-            return productDAO.findById(id).map(DTOMapper::toDTO);
+            return productDAO.findById(id);
         } catch (SQLException e) {
             throw new ServiceException("Error retrieving product with ID: " + id, e);
         }
@@ -60,10 +58,10 @@ public class ProductServiceImpl implements ProductService {
         * @throws ServiceException If an error occurs while searching for products.
     **/
     @Override
-    public List<ProductDTO> findByName(String name) throws ServiceException {
+    public List<Product> findByName(String name) throws ServiceException {
         try {
             return productDAO.findByName(name).stream()
-                    .map(DTOMapper::toDTO)
+                    
                     .collect(Collectors.toList());
         } catch (SQLException e) {
             throw new ServiceException("Error searching products by name: " + name, e);
@@ -77,10 +75,10 @@ public class ProductServiceImpl implements ProductService {
         * @throws ServiceException If an error occurs while searching for products.
     **/
     @Override
-    public List<ProductDTO> findByCategory(String category) throws ServiceException {
+    public List<Product> findByCategory(String category) throws ServiceException {
         try {
             return productDAO.findByCategory(category).stream()
-                    .map(DTOMapper::toDTO)
+                    
                     .collect(Collectors.toList());
         } catch (SQLException e) {
             throw new ServiceException("Error searching products by category: " + category, e);
@@ -93,10 +91,10 @@ public class ProductServiceImpl implements ProductService {
         * @throws ServiceException If an error occurs while retrieving products from the database.
     **/
     @Override
-    public List<ProductDTO> findAll() throws ServiceException {
+    public List<Product> findAll() throws ServiceException {
         try {
             return productDAO.findAll().stream()
-                    .map(DTOMapper::toDTO)
+                    
                     .collect(Collectors.toList());
         } catch (SQLException e) {
             throw new ServiceException("Error retrieving products", e);
@@ -130,11 +128,10 @@ public class ProductServiceImpl implements ProductService {
         * @throws ServiceException If an error occurs while saving the product to the database, such as validation errors or SQL exceptions.
     **/
     @Override
-    public ProductDTO save(ProductDTO dto) throws ServiceException {
-        validate(dto);
+    public Product save(Product product) throws ServiceException {
+        validate(product);
         try {
-            Product saved = productDAO.save(DTOMapper.toEntity(dto));
-            return DTOMapper.toDTO(saved);
+            return productDAO.save(product);
         } catch (SQLException e) {
             throw new ServiceException("Error saving product", e);
         }
@@ -181,13 +178,13 @@ public class ProductServiceImpl implements ProductService {
         * @throws ServiceException If an error occurs while retrieving low-stock products from the database, such as SQL exceptions or validation errors.
     **/
     @Override
-    public List<ProductDTO> findLowStockProducts(int threshold) throws ServiceException {
+    public List<Product> findLowStockProducts(int threshold) throws ServiceException {
         if (threshold < 0) {
             throw new ServiceException("Stock threshold cannot be negative");
         }
         try {
             return productDAO.findLowStockProducts(threshold).stream()
-                    .map(DTOMapper::toDTO)
+                    
                     .collect(Collectors.toList());
         } catch (SQLException e) {
             throw new ServiceException("Error searching low-stock products", e);
@@ -228,14 +225,14 @@ public class ProductServiceImpl implements ProductService {
         * @param dto The ProductDTO to validate.
         * @throws ServiceException If any validation rules are violated, such as empty name, negative price, or negative stock.
     **/
-    private void validate(ProductDTO dto) throws ServiceException {
-        if (dto.getName() == null || dto.getName().isBlank()) {
+    private void validate(Product product) throws ServiceException {
+        if (product.name() == null || product.name().isBlank()) {
             throw new ServiceException("Product name cannot be empty");
         }
-        if (dto.getPrice() < 0) {
+        if (product.price() < 0) {
             throw new ServiceException("Product price cannot be negative");
         }
-        if (dto.getStock() < 0) {
+        if (product.stock() < 0) {
             throw new ServiceException("Product stock cannot be negative");
         }
     }

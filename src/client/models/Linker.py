@@ -184,7 +184,7 @@ class Linker:
         product = {
             "id": 0,
             "name": name,
-            "description": category,
+            "category": category,
             "price": float(price),
             "stock": int(stock)
         }
@@ -295,7 +295,7 @@ class Linker:
         The result of the backend API call.
     """
     def get_first_available_permission_id(self):
-        return self._call_authenticated_facade("getFirstAvailablePermissionId")
+        return self._call_authenticated_facade("getDefaultPermissionId")
     
     """ List recent transactions in the system. Requires authentication.
     
@@ -492,3 +492,6 @@ class Linker:
     """Clears the local token reference."""
     def remove_token(self):
         self.token = None
+    def validate_session(self):
+        """Validates the current session token with the backend."""
+        return self._call_authenticated_facade("getSessionFromToken", self.token)

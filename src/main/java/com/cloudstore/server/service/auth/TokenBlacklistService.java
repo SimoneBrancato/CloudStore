@@ -77,7 +77,7 @@ public class TokenBlacklistService {
     /**
          * Returns true if the given JTI has been blacklisted (i.e. the token was revoked).
          * @param jti The JWT ID to check
-         * @return true if revoked, false if valid or Redis is unreachable (fail-open)
+         * @return true if revoked or Redis is unreachable (fail-closed), false if valid
     **/
     public boolean isRevoked(String jti) {
         try {
@@ -85,7 +85,7 @@ public class TokenBlacklistService {
         } catch (Exception e) {
             System.err.println("[WARN] TokenBlacklistService.isRevoked: Redis unavailable for JTI="
                     + jti + " — " + e.getMessage());
-            return false;
+            return true;
         }
     }
 }

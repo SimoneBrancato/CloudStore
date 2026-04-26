@@ -179,7 +179,7 @@ def _inject_compact_shop_styles():
     )
 
 def _product_category(product):
-    return product.get("description") or product.get("category") or "Uncategorized"
+    return product.get("category") or "Uncategorized"
 
 def _slugify(text):
     normalized = unicodedata.normalize("NFKD", str(text or ""))

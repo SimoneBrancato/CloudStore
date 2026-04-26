@@ -2,6 +2,9 @@ package com.cloudstore.server.service.mapper;
 
 import com.cloudstore.server.model.dto.*;
 import com.cloudstore.server.model.entities.*;
+import com.cloudstore.server.model.domain.*;
+
+import java.util.List;
 
 public class DTOMapper {
     
@@ -51,7 +54,7 @@ public class DTOMapper {
         return new Product(
             dto.getId(),
             dto.getName(),
-            dto.getDescription(),
+            dto.getCategory(),
             dto.getPrice(),
             dto.getStock()
         );
@@ -134,6 +137,96 @@ public class DTOMapper {
             dto.getCustomerCategory(),
             dto.getDiscount(),
             toEntity(dto.getProductDetails())
+        );
+    }
+
+    /**
+        * Converts a CartOrderResult entity to a CartOrderResultDTO.
+        * @param entity The CartOrderResult entity to convert.
+        * @return A CartOrderResultDTO representing the given entity.
+    **/
+    public static CartOrderResultDTO toDTO(CartOrderResult entity) {
+        if (entity == null) return null;
+        List<TransactionDTO> transactionDTOs = entity.transactions() != null
+                ? entity.transactions().stream().map(DTOMapper::toDTO).toList()
+                : List.of();
+        return new CartOrderResultDTO(transactionDTOs, entity.totalItems(), entity.cartTotal(), entity.lines());
+    }
+
+    /**
+        * Converts a CheckoutContext entity to a CheckoutContextDTO.
+        * @param entity The CheckoutContext entity to convert.
+        * @return A CheckoutContextDTO representing the given entity.
+    **/
+    public static CheckoutContextDTO toDTO(CheckoutContext entity) {
+        if (entity == null) return null;
+        return new CheckoutContextDTO(
+            entity.customerName(), entity.customerCategory(), entity.discount(),
+            entity.discountApplied(), entity.discountSource(), entity.sampleSize(), entity.sampleWindow()
+        );
+    }
+
+    /**
+        * Converts a DashboardStats entity to a DashboardStatsDTO.
+        * @param entity The DashboardStats entity to convert.
+        * @return A DashboardStatsDTO representing the given entity.
+    **/
+    public static DashboardStatsDTO toDTO(DashboardStats entity) {
+        if (entity == null) return null;
+        return new DashboardStatsDTO(
+            entity.totalProducts(), entity.totalUsers(), entity.totalTransactions(),
+            entity.totalPermissions(), entity.monthlySales(), entity.monthlyTransactions(), entity.lowStockProducts()
+        );
+    }
+
+    /**
+        * Converts a SellerDashboardStats entity to a SellerDashboardStatsDTO.
+        * @param entity The SellerDashboardStats entity to convert.
+        * @return A SellerDashboardStatsDTO representing the given entity.
+    **/
+    public static SellerDashboardStatsDTO toDTO(SellerDashboardStats entity) {
+        if (entity == null) return null;
+        return new SellerDashboardStatsDTO(
+            entity.totalRevenue(), entity.totalOrders(), entity.averageOrderValue(),
+            entity.productsSold(), entity.totalSales(), entity.lowStockProducts()
+        );
+    }
+
+    /**
+        * Converts a UserProfile entity to a UserProfileDTO.
+        * @param entity The UserProfile entity to convert.
+        * @return A UserProfileDTO representing the given entity.
+    **/
+    public static UserProfileDTO toDTO(UserProfile entity) {
+        if (entity == null) return null;
+        List<TransactionDTO> orderDTOs = entity.orderHistory() != null
+                ? entity.orderHistory().stream().map(DTOMapper::toDTO).toList()
+                : List.of();
+        return new UserProfileDTO(toDTO(entity.user()), orderDTOs, entity.totalOrders(), entity.totalSpent());
+    }
+
+    /**
+        * Converts a SalesOrderSummary entity to a SalesOrderSummaryDTO.
+        * @param entity The SalesOrderSummary entity to convert.
+        * @return A SalesOrderSummaryDTO representing the given entity.
+    **/
+    public static SalesOrderSummaryDTO toDTO(SalesOrderSummary entity) {
+        if (entity == null) return null;
+        return new SalesOrderSummaryDTO(
+            entity.id(), entity.customerName(), entity.product(),
+            entity.totalItems(), entity.totalCost(), entity.paymentMethod(), entity.city()
+        );
+    }
+
+    /**
+        * Converts a TopCustomerSummary domain record to a TopCustomerSummaryDTO.
+        * @param entity The TopCustomerSummary to convert.
+        * @return A TopCustomerSummaryDTO representing the given entity.
+    **/
+    public static TopCustomerSummaryDTO toDTO(TopCustomerSummary entity) {
+        if (entity == null) return null;
+        return new TopCustomerSummaryDTO(
+            entity.customerName(), entity.orderCount(), entity.totalSpent(), entity.lastOrderDate()
         );
     }
 }

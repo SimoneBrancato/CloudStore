@@ -1,6 +1,6 @@
 package com.cloudstore.server.service.interfaces;
 
-import com.cloudstore.server.model.dto.PermissionDTO;
+import com.cloudstore.server.model.entities.Permission;
 import com.cloudstore.server.service.exception.ServiceException;
 
 import java.util.List;
@@ -8,13 +8,13 @@ import java.util.Optional;
 
 public interface PermissionService {
     
-    Optional<PermissionDTO> findById(int id) throws ServiceException;
+    Optional<Permission> findById(int id) throws ServiceException;
 
-    Optional<PermissionDTO> findByCategory(String category) throws ServiceException;
+    Optional<Permission> findByCategory(String category) throws ServiceException;
 
-    List<PermissionDTO> findAll() throws ServiceException;
+    List<Permission> findAll() throws ServiceException;
 
-    PermissionDTO save(PermissionDTO dto) throws ServiceException;
+    Permission save(Permission permission) throws ServiceException;
 
     boolean delete(int id) throws ServiceException;
 

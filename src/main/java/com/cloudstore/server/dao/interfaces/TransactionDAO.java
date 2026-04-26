@@ -1,12 +1,12 @@
 package com.cloudstore.server.dao.interfaces;
 
 import com.cloudstore.server.model.entities.Transaction;
+import com.cloudstore.server.model.domain.TopCustomerSummary;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
-import java.util.Map;
 
 public interface TransactionDAO {
     
@@ -44,5 +44,5 @@ public interface TransactionDAO {
 
     int countDistinctProductsSold() throws SQLException;
 
-    List<Map<String, Object>> findTopCustomers(int limit) throws SQLException;
+    List<TopCustomerSummary> findTopCustomers(int limit) throws SQLException;
 }

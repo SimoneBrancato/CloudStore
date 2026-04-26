@@ -1,6 +1,6 @@
 package com.cloudstore.server.service.interfaces;
 
-import com.cloudstore.server.model.dto.UserDTO;
+import com.cloudstore.server.model.entities.User;
 import com.cloudstore.server.service.exception.ServiceException;
 
 import java.util.List;
@@ -8,15 +8,15 @@ import java.util.Optional;
 
 public interface UserService {
     
-    Optional<UserDTO> findByNickname(String nickname) throws ServiceException;
+    Optional<User> findByNickname(String nickname) throws ServiceException;
     
-    Optional<UserDTO> findByEmail(String email) throws ServiceException;
+    Optional<User> findByEmail(String email) throws ServiceException;
     
-    List<UserDTO> findByPermission(int permissionId) throws ServiceException;
+    List<User> findByPermission(int permissionId) throws ServiceException;
     
-    List<UserDTO> findAll() throws ServiceException;
+    List<User> findAll() throws ServiceException;
     
-    UserDTO register(UserDTO dto) throws ServiceException;
+    User register(User user) throws ServiceException;
     
     boolean delete(String nickname) throws ServiceException;
     

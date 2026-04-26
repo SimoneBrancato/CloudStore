@@ -5,6 +5,7 @@ import com.cloudstore.server.model.dto.auth.AuthenticationResult;
 import com.cloudstore.server.model.dto.auth.LoginResult;
 import com.cloudstore.server.service.exception.ServiceException;
 import com.cloudstore.server.service.interfaces.*;
+import com.cloudstore.server.service.mapper.DTOMapper;
 import com.cloudstore.server.service.auth.rbac.AccessControl;
 import com.cloudstore.server.service.impl.*;
 import com.cloudstore.server.model.auth.Role;
@@ -42,6 +43,32 @@ public class CloudStoreFacade {
         }
     }
 
+    /**
+     * Constructor for CloudStoreFacade that allows for dependency injection.
+     * This is primarily used for unit testing or when a custom configuration of services is required.
+     * @param permissionService The service for managing permissions.
+     * @param productService The service for managing products.
+     * @param userService The service for managing users.
+     * @param transactionService The service for managing transactions.
+     * @param authService The service for handling authentication.
+     * @param cartService The service for managing shopping cart operations.
+     * @param dashboardService The service for dashboard statistics.
+     * @param accessControl The service for role-based access control.
+    **/
+    public CloudStoreFacade(PermissionService permissionService, ProductService productService,
+                            UserService userService, TransactionService transactionService,
+                            AuthService authService, CartService cartService,
+                            DashboardService dashboardService, AccessControl accessControl) {
+        this.permissionService = permissionService;
+        this.productService = productService;
+        this.userService = userService;
+        this.transactionService = transactionService;
+        this.authService = authService;
+        this.cartService = cartService;
+        this.dashboardService = dashboardService;
+        this.accessControl = accessControl;
+    }
+
     // RBAC
 
     @FunctionalInterface
@@ -76,19 +103,19 @@ public class CloudStoreFacade {
     // ADMIN
 
     public Optional<PermissionDTO> findPermissionById(int id) throws ServiceException {
-        return adminMethod(() -> permissionService.findById(id));
+        return adminMethod(() -> permissionService.findById(id).map(DTOMapper::toDTO));
     }
 
     public Optional<PermissionDTO> findPermissionByCategory(String category) throws ServiceException {
-        return adminMethod(() -> permissionService.findByCategory(category));
+        return adminMethod(() -> permissionService.findByCategory(category).map(DTOMapper::toDTO));
     }
 
     public List<PermissionDTO> getAllPermissions() throws ServiceException {
-        return adminMethod(() -> permissionService.findAll());
+        return adminMethod(() -> permissionService.findAll().stream().map(DTOMapper::toDTO).toList());
     }
 
     public PermissionDTO savePermission(PermissionDTO dto) throws ServiceException {
-        return adminMethod(() -> permissionService.save(dto));
+        return adminMethod(() -> DTOMapper.toDTO(permissionService.save(DTOMapper.toEntity(dto))));
     }
 
     public boolean deletePermission(int id) throws ServiceException {
@@ -100,7 +127,7 @@ public class CloudStoreFacade {
     }
 
     public ProductDTO saveProduct(ProductDTO dto) throws ServiceException {
-        return adminMethod(() -> productService.save(dto));
+        return adminMethod(() -> DTOMapper.toDTO(productService.save(DTOMapper.toEntity(dto))));
     }
 
     public boolean deleteProduct(int id) throws ServiceException {
@@ -112,7 +139,7 @@ public class CloudStoreFacade {
     }
 
     public List<ProductDTO> findLowStockProducts(int threshold) throws ServiceException {
-        return adminMethod(() -> productService.findLowStockProducts(threshold));
+        return adminMethod(() -> productService.findLowStockProducts(threshold).stream().map(DTOMapper::toDTO).toList());
     }
 
     public int countProducts() throws ServiceException {
@@ -120,11 +147,11 @@ public class CloudStoreFacade {
     }
 
     public List<UserDTO> findUsersByPermission(int permissionId) throws ServiceException {
-        return adminMethod(() -> userService.findByPermission(permissionId));
+        return adminMethod(() -> userService.findByPermission(permissionId).stream().map(DTOMapper::toDTO).toList());
     }
 
     public List<UserDTO> getAllUsers() throws ServiceException {
-        return adminMethod(() -> userService.findAll());
+        return adminMethod(() -> userService.findAll().stream().map(DTOMapper::toDTO).toList());
     }
 
     public boolean deleteUser(String nickname) throws ServiceException {
@@ -144,35 +171,35 @@ public class CloudStoreFacade {
     }
 
     public Optional<TransactionDTO> findTransactionById(long id) throws ServiceException {
-        return adminMethod(() -> transactionService.findById(id));
+        return adminMethod(() -> transactionService.findById(id).map(DTOMapper::toDTO));
     }
 
     public List<TransactionDTO> findTransactionsByProduct(int productId) throws ServiceException {
-        return adminMethod(() -> transactionService.findByProduct(productId));
+        return adminMethod(() -> transactionService.findByProduct(productId).stream().map(DTOMapper::toDTO).toList());
     }
 
     public List<TransactionDTO> findRecentTransactionsByProduct(int productId, int limit) throws ServiceException {
-        return adminMethod(() -> transactionService.findRecentByProduct(productId, limit));
+        return adminMethod(() -> transactionService.findRecentByProduct(productId, limit).stream().map(DTOMapper::toDTO).toList());
     }
 
     public List<TransactionDTO> findTransactionsByDateRange(LocalDateTime start, LocalDateTime end) throws ServiceException {
-        return adminMethod(() -> transactionService.findByDateRange(start, end));
+        return adminMethod(() -> transactionService.findByDateRange(start, end).stream().map(DTOMapper::toDTO).toList());
     }
 
     public List<TransactionDTO> findTransactionsByPaymentMethod(String paymentMethod) throws ServiceException {
-        return adminMethod(() -> transactionService.findByPaymentMethod(paymentMethod));
+        return adminMethod(() -> transactionService.findByPaymentMethod(paymentMethod).stream().map(DTOMapper::toDTO).toList());
     }
 
     public List<TransactionDTO> findTransactionsByCity(String city) throws ServiceException {
-        return adminMethod(() -> transactionService.findByCity(city));
+        return adminMethod(() -> transactionService.findByCity(city).stream().map(DTOMapper::toDTO).toList());
     }
 
     public List<TransactionDTO> getAllTransactions() throws ServiceException {
-        return adminMethod(() -> transactionService.findAll());
+        return adminMethod(() -> transactionService.findAll().stream().map(DTOMapper::toDTO).toList());
     }
 
     public TransactionDTO saveTransaction(TransactionDTO dto) throws ServiceException {
-        return adminMethod(() -> transactionService.save(dto));
+        return adminMethod(() -> DTOMapper.toDTO(transactionService.save(DTOMapper.toEntity(dto))));
     }
 
     public boolean deleteTransaction(long id) throws ServiceException {
@@ -188,33 +215,33 @@ public class CloudStoreFacade {
     }
 
     public List<TransactionDTO> findRecentTransactions(int limit) throws ServiceException {
-        return adminMethod(() -> transactionService.findRecentTransactions(limit));
+        return adminMethod(() -> transactionService.findRecentTransactions(limit).stream().map(DTOMapper::toDTO).toList());
     }
 
     public int countTransactions() throws ServiceException {
         return adminMethod(() -> transactionService.count());
     }
 
-    public Map<String, Object> getDashboardStats() throws ServiceException {
-        return adminMethod(() -> dashboardService.getDashboardStats());
+    public DashboardStatsDTO getDashboardStats() throws ServiceException {
+        return adminMethod(() -> DTOMapper.toDTO(dashboardService.getDashboardStats()));
     }
 
     // PRODUCT
 
     public Optional<ProductDTO> findProductById(int id) throws ServiceException {
-        return productService.findById(id);
+        return productService.findById(id).map(DTOMapper::toDTO);
     }
 
     public List<ProductDTO> findProductsByName(String name) throws ServiceException {
-        return productService.findByName(name);
+        return productService.findByName(name).stream().map(DTOMapper::toDTO).toList();
     }
 
     public List<ProductDTO> findProductsByCategory(String category) throws ServiceException {
-        return productService.findByCategory(category);
+        return productService.findByCategory(category).stream().map(DTOMapper::toDTO).toList();
     }
 
     public List<ProductDTO> getAllProducts() throws ServiceException {
-        return productService.findAll();
+        return productService.findAll().stream().map(DTOMapper::toDTO).toList();
     }
 
     public List<String> getAllProductCategories() throws ServiceException {
@@ -228,15 +255,15 @@ public class CloudStoreFacade {
     // USER
     
     public Optional<UserDTO> findUserByNickname(String nickname) throws ServiceException {
-        return userService.findByNickname(nickname);
+        return userService.findByNickname(nickname).map(DTOMapper::toDTO);
     }
 
     public Optional<UserDTO> findUserByEmail(String email) throws ServiceException {
-        return userService.findByEmail(email);
+        return userService.findByEmail(email).map(DTOMapper::toDTO);
     }
 
     public UserDTO registerUser(UserDTO dto) throws ServiceException {
-        return userService.register(dto);
+        return DTOMapper.toDTO(userService.register(DTOMapper.toEntity(dto)));
     }
 
     public boolean userExists(String nickname) throws ServiceException {
@@ -250,33 +277,33 @@ public class CloudStoreFacade {
     // CUSTOMER
 
     public List<TransactionDTO> findTransactionsByCustomer(String customerName) throws ServiceException {
-        return customerMethod(customerName, () -> transactionService.findByCustomer(customerName));
+        return customerMethod(customerName, () -> transactionService.findByCustomer(customerName).stream().map(DTOMapper::toDTO).toList());
     }
 
-    public Map<String, Object> getCheckoutContext(String customerName, Map<Integer, Integer> items) throws ServiceException {
-        return customerMethod(customerName, () -> cartService.getCheckoutContext(customerName, items));
+    public CheckoutContextDTO getCheckoutContext(String customerName, Map<Integer, Integer> items) throws ServiceException {
+        return customerMethod(customerName, () -> DTOMapper.toDTO(cartService.getCheckoutContext(customerName, items)));
     }
 
     public TransactionDTO processOrder(String customerName, TransactionDTO dto) throws ServiceException {
-        return customerMethod(customerName, () -> cartService.processSingleOrder(dto));
+        return customerMethod(customerName, () -> DTOMapper.toDTO(cartService.processSingleOrder(DTOMapper.toEntity(dto))));
     }
 
-    public Map<String, Object> processCartOrder(String customerName, String paymentMethod,
-                                                String city, Map<Integer, Integer> items) throws ServiceException {
-        return customerMethod(customerName, () -> cartService.processCartOrder(customerName, paymentMethod, city, items));
+    public CartOrderResultDTO processCartOrder(String customerName, String paymentMethod,
+                                               String city, Map<Integer, Integer> items) throws ServiceException {
+        return customerMethod(customerName, () -> DTOMapper.toDTO(cartService.processCartOrder(customerName, paymentMethod, city, items)));
     }
 
-    public Map<String, Object> getUserProfile(String nickname) throws ServiceException {
-        return customerMethod(nickname, () -> dashboardService.getUserProfile(nickname));
+    public UserProfileDTO getUserProfile(String nickname) throws ServiceException {
+        return customerMethod(nickname, () -> DTOMapper.toDTO(dashboardService.getUserProfile(nickname)));
     }
 
     // UTILITIES
     
-    public int getFirstAvailablePermissionId() throws ServiceException {
+    public int getDefaultPermissionId() throws ServiceException {
         return adminMethod(() -> permissionService.findAll().stream()
                 .findFirst()
                 .orElseThrow(() -> new ServiceException("No permission found"))
-                .getId());
+                .id());
     }
 
     public boolean permissionExists(int id) throws ServiceException {
@@ -289,20 +316,20 @@ public class CloudStoreFacade {
 
     // SELLER
 
-    public Map<String, Object> getSellerDashboardStats() throws ServiceException {
-        return sellerMethod(() -> dashboardService.getSellerDashboardStats());
+    public SellerDashboardStatsDTO getSellerDashboardStats() throws ServiceException {
+        return sellerMethod(() -> DTOMapper.toDTO(dashboardService.getSellerDashboardStats()));
     }
 
-    public List<?> getSellerProducts() throws ServiceException {
-        return sellerMethod(() -> dashboardService.getSellerProducts());
+    public List<ProductDTO> getSellerProducts() throws ServiceException {
+        return sellerMethod(() -> dashboardService.getSellerProducts().stream().map(DTOMapper::toDTO).toList());
     }
 
-    public List<Map<String, Object>> getSellerSalesOrders(int limit) throws ServiceException {
-        return sellerMethod(() -> dashboardService.getSellerSalesOrders(limit));
+    public List<SalesOrderSummaryDTO> getSellerSalesOrders(int limit) throws ServiceException {
+        return sellerMethod(() -> dashboardService.getSellerSalesOrders(limit).stream().map(DTOMapper::toDTO).toList());
     }
 
-    public List<Map<String, Object>> getSellerTopCustomers(int limit) throws ServiceException {
-        return sellerMethod(() -> dashboardService.getSellerTopCustomers(limit));
+    public List<TopCustomerSummaryDTO> getSellerTopCustomers(int limit) throws ServiceException {
+        return sellerMethod(() -> dashboardService.getSellerTopCustomers(limit).stream().map(DTOMapper::toDTO).toList());
     }
 
     public boolean updateSellerProductStock(int productId, int newQuantity) throws ServiceException {
@@ -311,10 +338,32 @@ public class CloudStoreFacade {
 
     // AUTH
 
+    /**
+     * Authenticates a user with the provided nickname and password.
+     * @param nickname The user's nickname.
+     * @param password The user's password.
+     * @return A LoginResult containing authentication status and token if successful.
+     * @throws ServiceException If an error occurs during authentication.
+    **/
     public LoginResult authenticateUser(String nickname, String password) throws ServiceException {
         return authService.authenticateUser(nickname, password);
     }
 
+    /**
+     * Retrieves the authentication session/context associated with a JWT token.
+     * @param token The JWT token to validate.
+     * @return An AuthenticationResult containing user details and roles.
+     * @throws ServiceException If the token is invalid, expired, or an error occurs.
+    **/
+    public AuthenticationResult getSessionFromToken(String token) throws ServiceException {
+        return authService.getSessionFromToken(token);
+    }
+
+    /**
+     * Logs out a user by invalidating their current session token.
+     * @param token The session token to invalidate.
+     * @throws ServiceException If an error occurs during logout.
+    **/
     public void logout(String token) throws ServiceException {
         authService.logout(token);
     }

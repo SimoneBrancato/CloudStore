@@ -2,11 +2,9 @@ package com.cloudstore.server.service.impl;
 
 import com.cloudstore.server.dao.impl.PermissionDAOImpl;
 import com.cloudstore.server.dao.interfaces.PermissionDAO;
-import com.cloudstore.server.model.dto.PermissionDTO;
 import com.cloudstore.server.model.entities.Permission;
 import com.cloudstore.server.service.exception.ServiceException;
 import com.cloudstore.server.service.interfaces.PermissionService;
-import com.cloudstore.server.service.mapper.DTOMapper;
 
 import java.sql.SQLException;
 import java.util.List;
@@ -45,9 +43,9 @@ public class PermissionServiceImpl implements PermissionService {
         * @throws ServiceException If an error occurs while retrieving the permission from the database.
     **/
     @Override
-    public Optional<PermissionDTO> findById(int id) throws ServiceException {
+    public Optional<Permission> findById(int id) throws ServiceException {
         try {
-            return permissionDAO.findById(id).map(DTOMapper::toDTO);
+            return permissionDAO.findById(id);
         } catch (SQLException e) {
             throw new ServiceException("Error retrieving permission with ID: " + id, e);
         }
@@ -60,9 +58,9 @@ public class PermissionServiceImpl implements PermissionService {
         * @throws ServiceException If an error occurs while retrieving the permission from the database.
     **/
     @Override
-    public Optional<PermissionDTO> findByCategory(String category) throws ServiceException {
+    public Optional<Permission> findByCategory(String category) throws ServiceException {
         try {
-            return permissionDAO.findByCategory(category).map(DTOMapper::toDTO);
+            return permissionDAO.findByCategory(category);
         } catch (SQLException e) {
             throw new ServiceException("Error retrieving permission by category: " + category, e);
         }
@@ -74,10 +72,10 @@ public class PermissionServiceImpl implements PermissionService {
         * @throws ServiceException If an error occurs while retrieving permissions from the database.
     **/
     @Override
-    public List<PermissionDTO> findAll() throws ServiceException {
+    public List<Permission> findAll() throws ServiceException {
         try {
             return permissionDAO.findAll().stream()
-                    .map(DTOMapper::toDTO)
+                    
                     .collect(Collectors.toList());
         } catch (SQLException e) {
             throw new ServiceException("Error retrieving permissions", e);
@@ -91,13 +89,12 @@ public class PermissionServiceImpl implements PermissionService {
         * @throws ServiceException If an error occurs while saving the permission to the database, such as validation errors or SQL exceptions.
     **/
     @Override
-    public PermissionDTO save(PermissionDTO dto) throws ServiceException {
-        if (dto.getCategory() == null || dto.getCategory().isBlank()) {
+    public Permission save(Permission permission) throws ServiceException {
+        if (permission.category() == null || permission.category().isBlank()) {
             throw new ServiceException("Permission category cannot be empty");
         }
         try {
-            Permission saved = permissionDAO.save(DTOMapper.toEntity(dto));
-            return DTOMapper.toDTO(saved);
+            return permissionDAO.save(permission);
         } catch (SQLException e) {
             throw new ServiceException("Error saving permission", e);
         }

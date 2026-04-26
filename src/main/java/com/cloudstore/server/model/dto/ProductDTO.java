@@ -3,7 +3,7 @@ package com.cloudstore.server.model.dto;
 public class ProductDTO {
     private int id; // The unique identifier for the product
     private String name; // The name of the product
-    private String description; // A brief description of the product
+    private String category; // The category of the product
     private double price; // The price of the product
     private int stock; // The available stock quantity of the product
     
@@ -13,14 +13,14 @@ public class ProductDTO {
         * Constructor to initialize all fields.
         * @param id The unique identifier for the product.
         * @param name The name of the product.
-        * @param description A brief description of the product.
+        * @param category The category of the product.
         * @param price The price of the product.
         * @param stock The available stock quantity of the product.
     **/
-    public ProductDTO(int id, String name, String description, double price, int stock) {
+    public ProductDTO(int id, String name, String category, double price, int stock) {
         this.id = id;
         this.name = name;
-        this.description = description;
+        this.category = category;
         this.price = price;
         this.stock = stock;
     }
@@ -58,19 +58,19 @@ public class ProductDTO {
     }
     
     /**
-        * Gets the description of the product.
-        * @return The product description.
+        * Gets the category of the product.
+        * @return The product category.
     **/
-    public String getDescription() {
-        return description;
+    public String getCategory() {
+        return category;
     }
     
     /**
-        * Sets the description of the product.
-        * @param description The product description.
+        * Sets the category of the product.
+        * @param category The product category.
     **/
-    public void setDescription(String description) {
-        this.description = description;
+    public void setCategory(String category) {
+        this.category = category;
     }
     
     /**

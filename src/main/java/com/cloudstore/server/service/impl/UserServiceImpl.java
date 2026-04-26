@@ -4,12 +4,10 @@ import com.cloudstore.server.dao.impl.PermissionDAOImpl;
 import com.cloudstore.server.dao.impl.UserDAOImpl;
 import com.cloudstore.server.dao.interfaces.PermissionDAO;
 import com.cloudstore.server.dao.interfaces.UserDAO;
-import com.cloudstore.server.model.dto.UserDTO;
 import com.cloudstore.server.model.entities.User;
 import com.cloudstore.server.service.exception.ServiceException;
 import com.cloudstore.server.service.exception.ValidationException;
 import com.cloudstore.server.service.interfaces.UserService;
-import com.cloudstore.server.service.mapper.DTOMapper;
 import com.cloudstore.server.service.auth.PasswordHasher;
 
 import java.sql.SQLException;
@@ -63,9 +61,9 @@ public class UserServiceImpl implements UserService {
         * @throws ServiceException If an error occurs while retrieving the user from the database.
     **/
     @Override
-    public Optional<UserDTO> findByNickname(String nickname) throws ServiceException {
+    public Optional<User> findByNickname(String nickname) throws ServiceException {
         try {
-            return userDAO.findByNickname(nickname).map(DTOMapper::toDTO);
+            return userDAO.findByNickname(nickname);
         } catch (SQLException e) {
             throw new ServiceException("Error retrieving user: " + nickname, e);
         }
@@ -78,9 +76,9 @@ public class UserServiceImpl implements UserService {
         * @throws ServiceException If an error occurs while retrieving the user from the database.
     **/
     @Override
-    public Optional<UserDTO> findByEmail(String email) throws ServiceException {
+    public Optional<User> findByEmail(String email) throws ServiceException {
         try {
-            return userDAO.findByEmail(email).map(DTOMapper::toDTO);
+            return userDAO.findByEmail(email);
         } catch (SQLException e) {
             throw new ServiceException("Error retrieving user by email: " + email, e);
         }
@@ -93,10 +91,10 @@ public class UserServiceImpl implements UserService {
         * @throws ServiceException If an error occurs while searching for users by permission.
     **/
     @Override
-    public List<UserDTO> findByPermission(int permissionId) throws ServiceException {
+    public List<User> findByPermission(int permissionId) throws ServiceException {
         try {
             return userDAO.findByPermission(permissionId).stream()
-                    .map(DTOMapper::toDTO)
+                    
                     .collect(Collectors.toList());
         } catch (SQLException e) {
             throw new ServiceException("Error searching users by permission ID: " + permissionId, e);
@@ -109,10 +107,10 @@ public class UserServiceImpl implements UserService {
         * @throws ServiceException If an error occurs while retrieving users from the database.
     **/
     @Override
-    public List<UserDTO> findAll() throws ServiceException {
+    public List<User> findAll() throws ServiceException {
         try {
             return userDAO.findAll().stream()
-                    .map(DTOMapper::toDTO)
+                    
                     .collect(Collectors.toList());
         } catch (SQLException e) {
             throw new ServiceException("Error retrieving users", e);
@@ -126,29 +124,29 @@ public class UserServiceImpl implements UserService {
         * @throws ServiceException If registration fails due to validation errors, database issues, or other problems.
     **/
     @Override
-    public UserDTO register(UserDTO dto) throws ServiceException {
-        validate(dto);
+    public User register(User user) throws ServiceException {
+        validate(user);
         try {
-            if (userDAO.exists(dto.getNickname())) {
-                throw new ValidationException("Nickname already in use: " + dto.getNickname());
+            if (userDAO.exists(user.nickname())) {
+                throw new ValidationException("Nickname already in use: " + user.nickname());
             }
-            if (userDAO.emailExists(dto.getEmail())) {
-                throw new ValidationException("Email already registered: " + dto.getEmail());
+            if (userDAO.emailExists(user.email())) {
+                throw new ValidationException("Email already registered: " + user.email());
             }
-            if (dto.getPermission() == null || !permissionDAO.exists(dto.getPermission().getId())) {
+            if (user.PermissionID() == null || !permissionDAO.exists(user.PermissionID().id())) {
                 throw new ServiceException("Permission not found with ID: "
-                        + (dto.getPermission() != null ? dto.getPermission().getId() : "null"));
+                        + (user.PermissionID() != null ? user.PermissionID().id() : "null"));
             }
-            UserDTO dtoToSave = new UserDTO(
-                    dto.getNickname(),
-                    dto.getName(),
-                    dto.getSurname(),
-                    dto.getEmail(),
-                    PasswordHasher.hash(dto.getPassword()),
-                    dto.getPermission()
+            User userToSave = new User(
+                    user.nickname(),
+                    user.name(),
+                    user.surname(),
+                    user.email(),
+                    PasswordHasher.hash(user.password()),
+                    user.PermissionID()
             );
-            User saved = userDAO.save(DTOMapper.toEntity(dtoToSave));
-            return DTOMapper.toDTO(saved);
+            return userDAO.save(userToSave);
+            
         } catch (ServiceException e) {
             throw e;
         } catch (SQLException e) {
@@ -244,12 +242,12 @@ public class UserServiceImpl implements UserService {
     @Override
     public String resolveCustomerCategory(String customerName) throws ServiceException {
         try {
-            Optional<UserDTO> userOpt = findByNickname(customerName);
+            Optional<User> userOpt = findByNickname(customerName);
             if (userOpt.isPresent()) {
-                UserDTO user = userOpt.get();
-                if (user.getPermission() != null && user.getPermission().getCategory() != null
-                        && !user.getPermission().getCategory().isBlank()) {
-                    return user.getPermission().getCategory();
+                User user = userOpt.get();
+                if (user.PermissionID() != null && user.PermissionID().category() != null
+                        && !user.PermissionID().category().isBlank()) {
+                    return user.PermissionID().category();
                 }
             }
             return "Customer";
@@ -265,14 +263,14 @@ public class UserServiceImpl implements UserService {
         * @param dto The UserDTO to validate.
         * @throws ServiceException If any validation rules are violated, such as empty nickname, invalid email format, or weak password.
     **/
-    private void validate(UserDTO dto) throws ServiceException {
-        if (dto.getNickname() == null || dto.getNickname().isBlank()) {
+    private void validate(User user) throws ServiceException {
+        if (user.nickname() == null || user.nickname().isBlank()) {
             throw new ValidationException("Nickname cannot be empty");
         }
-        if (dto.getEmail() == null || !EMAIL_PATTERN.matcher(dto.getEmail()).matches()) {
-            throw new ValidationException("Invalid email format: " + dto.getEmail());
+        if (user.email() == null || !EMAIL_PATTERN.matcher(user.email()).matches()) {
+            throw new ValidationException("Invalid email format: " + user.email());
         }
-        if (dto.getPassword() == null || dto.getPassword().length() < MIN_PASSWORD_LENGTH) {
+        if (user.password() == null || user.password().length() < MIN_PASSWORD_LENGTH) {
             throw new ValidationException("Password must contain at least " + MIN_PASSWORD_LENGTH + " characters");
         }
     }

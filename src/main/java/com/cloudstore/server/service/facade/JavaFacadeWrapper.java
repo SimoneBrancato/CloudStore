@@ -38,9 +38,6 @@ public class JavaFacadeWrapper {
     // Facade instance to handle business logic
     private static final CloudStoreFacade FACADE;
 
-    // Auth service to validate tokens
-    private static final AuthService AUTH_SERVICE;
-
     // Port number for the HTTP server
     private static final int PORT = 9999;
     
@@ -49,7 +46,6 @@ public class JavaFacadeWrapper {
         MAPPER.registerModule(new JavaTimeModule());
         try {
             FACADE = new CloudStoreFacade();
-            AUTH_SERVICE = new AuthServiceImpl();
         } catch (ServiceException e) {
             throw new RuntimeException("Failed to initialize facade", e);
         }
@@ -97,7 +93,7 @@ public class JavaFacadeWrapper {
                 String authHeader = exchange.getRequestHeaders().getFirst("Authorization");
                 if (authHeader != null && authHeader.startsWith("Bearer ")) {
                     String token = authHeader.substring(7);
-                    AuthenticationResult session = AUTH_SERVICE.getSessionFromToken(token);
+                    AuthenticationResult session = FACADE.getSessionFromToken(token);
                     SecurityContext.set(session);
                 }
                 

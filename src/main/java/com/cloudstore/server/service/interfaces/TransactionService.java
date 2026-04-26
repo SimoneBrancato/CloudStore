@@ -1,32 +1,32 @@
 package com.cloudstore.server.service.interfaces;
 
-import com.cloudstore.server.model.dto.TransactionDTO;
+import com.cloudstore.server.model.entities.Transaction;
+import com.cloudstore.server.model.domain.TopCustomerSummary;
 import com.cloudstore.server.service.exception.ServiceException;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
-import java.util.Map;
 
 public interface TransactionService {
 
-    Optional<TransactionDTO> findById(long id) throws ServiceException;
+    Optional<Transaction> findById(long id) throws ServiceException;
     
-    List<TransactionDTO> findByCustomer(String customerName) throws ServiceException;
+    List<Transaction> findByCustomer(String customerName) throws ServiceException;
     
-    List<TransactionDTO> findByProduct(int productId) throws ServiceException;
+    List<Transaction> findByProduct(int productId) throws ServiceException;
     
-    List<TransactionDTO> findRecentByProduct(int productId, int limit) throws ServiceException;
+    List<Transaction> findRecentByProduct(int productId, int limit) throws ServiceException;
     
-    List<TransactionDTO> findByDateRange(LocalDateTime start, LocalDateTime end) throws ServiceException;
+    List<Transaction> findByDateRange(LocalDateTime start, LocalDateTime end) throws ServiceException;
     
-    List<TransactionDTO> findByPaymentMethod(String paymentMethod) throws ServiceException;
+    List<Transaction> findByPaymentMethod(String paymentMethod) throws ServiceException;
     
-    List<TransactionDTO> findByCity(String city) throws ServiceException;
+    List<Transaction> findByCity(String city) throws ServiceException;
     
-    List<TransactionDTO> findAll() throws ServiceException;
+    List<Transaction> findAll() throws ServiceException;
     
-    TransactionDTO save(TransactionDTO dto) throws ServiceException;
+    Transaction save(Transaction transaction) throws ServiceException;
     
     boolean delete(long id) throws ServiceException;
     
@@ -34,7 +34,7 @@ public interface TransactionService {
     
     int countByDateRange(LocalDateTime start, LocalDateTime end) throws ServiceException;
     
-    List<TransactionDTO> findRecentTransactions(int limit) throws ServiceException;
+    List<Transaction> findRecentTransactions(int limit) throws ServiceException;
     
     boolean exists(long id) throws ServiceException;
     
@@ -42,5 +42,5 @@ public interface TransactionService {
 
     int countDistinctProductsSold() throws ServiceException;
 
-    List<Map<String, Object>> findTopCustomers(int limit) throws ServiceException;
+    List<TopCustomerSummary> findTopCustomers(int limit) throws ServiceException;
 }
