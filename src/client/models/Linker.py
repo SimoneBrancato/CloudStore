@@ -343,6 +343,24 @@ class Linker:
                 normalized_items[product_id] = quantity
         return self._call_authenticated_facade("processCartOrder", customer_name, payment_method, city, normalized_items)
     
+    """ Get shopping advice for a customer based on their cart items and a prompt. Requires authentication.
+    
+    Args:
+        customer_name (str): The name of the customer.
+        prompt (str): The prompt to provide context for the advice.
+        items (list): A list of items in the customer's cart.
+    Returns:
+        The result of the backend API call.
+    """
+    def get_customer_shopping_advice(self, customer_name, prompt, items=None):
+        normalized_items = {}
+        for item in items or []:
+            product_id = int(item.get("product_id", 0))
+            quantity = int(item.get("quantity", 0))
+            if product_id > 0 and quantity > 0:
+                normalized_items[product_id] = quantity
+        return self._call_authenticated_facade("getCustomerShoppingAdvice", customer_name, prompt, normalized_items)
+    
     """ Get dashboard statistics for the authenticated user, including total products, users, transactions, and sales. Requires authentication.
     
     Args:        
