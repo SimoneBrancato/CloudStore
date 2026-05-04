@@ -63,7 +63,7 @@ public class ShoppingAdvisorServiceImpl implements ShoppingAdvisorService {
 
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(llmServiceUrl))
-                    .timeout(Duration.ofSeconds(30))
+                    .timeout(Duration.ofSeconds(90))
                     .header("Content-Type", "application/json")
                     .POST(HttpRequest.BodyPublishers.ofString(requestBody))
                     .build();

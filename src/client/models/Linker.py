@@ -68,7 +68,7 @@ class Linker:
             response = requests.post(
                 self.backend_url,
                 json=request,
-                timeout=30,
+                timeout=100,
                 headers=headers
             )
             
