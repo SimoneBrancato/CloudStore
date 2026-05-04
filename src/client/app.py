@@ -154,6 +154,8 @@ def _render_trending_section(rows, empty_msg, missing_field_msg, ranking_caption
 def _enable_auto_refresh(role):
     if role not in {"admin", "customer"}:
         return
+    if role == "customer" and st.session_state.get("customer_pause_autorefresh"):
+        return
     if st_autorefresh is None:
         return
     st_autorefresh(interval=AUTO_REFRESH_INTERVAL_MS, key="cloudstore_auto_refresh")
@@ -264,6 +266,10 @@ def _reset_session_after_logout():
     st.session_state.auth_role = None
     st.session_state.auth_token = None
     st.session_state.user_cart = {}
+    st.session_state.customer_last_advice = None
+    st.session_state.customer_pause_autorefresh = False
+    st.session_state.customer_pending_advice = False
+    st.session_state.customer_tab_target = None
     st.session_state.linker = None
     _clear_auth_from_url()
 
@@ -341,9 +347,73 @@ def _render_customer_view(linker, current_user):
     else:
         products = linker.list_products_by_category(selected_category)
 
-    shop_tab, cart_tab = st.tabs(["Catalog", "Cart"])
+    # Gestione della navigazione tra i tab
+    tab_target = st.session_state.get("customer_tab_target")
+    if tab_target in {"Catalog", "Cart", "Shopping Assistant"}:
+        st.session_state.customer_active_tab = tab_target
+        st.session_state.customer_tab_target = None
+    elif st.session_state.get("customer_pending_advice"):
+        st.session_state.customer_active_tab = "Shopping Assistant"
+    
+    # Inizializza il tab attivo se non esiste
+    if "customer_active_tab" not in st.session_state:
+        st.session_state.customer_active_tab = "Catalog"
 
-    with shop_tab:
+    # CSS per i tab stilizzati
+    st.markdown(
+        """
+        <style>
+        /* Container per i tab */
+        div[data-testid="stRadio"] > div[role="radiogroup"] {
+            display: flex;
+            flex-direction: row;
+            gap: 0;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 0;
+            margin-bottom: 1rem;
+        }
+        
+        /* Stile per ogni tab */
+        div[data-testid="stRadio"] label {
+            border: none !important;
+            border-bottom: 3px solid transparent !important;
+            border-radius: 0 !important;
+            padding: 0.5rem 1.5rem !important;
+            background: transparent !important;
+            margin: 0 !important;
+            color: #666 !important;
+            font-weight: 500 !important;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        /* Tab attivo */
+        div[data-testid="stRadio"] label[data-selected="true"] {
+            background: transparent !important;
+            color: #FF4B4B !important;
+            border-bottom: 3px solid #FF4B4B !important;
+            font-weight: 600 !important;
+        }
+        
+        /* Hover sui tab */
+        div[data-testid="stRadio"] label:hover {
+            color: #FF4B4B !important;
+            background: rgba(255, 75, 75, 0.05) !important;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    active_tab = st.radio(
+        "",
+        ["Catalog", "Cart", "Shopping Assistant"],
+        key="customer_active_tab",
+        horizontal=True,
+        label_visibility="collapsed",
+    )
+
+    if active_tab == "Catalog":
         st.markdown(f"### Products in category: {selected_category}")
 
         if not products:
@@ -379,6 +449,7 @@ def _render_customer_view(linker, current_user):
                         )
 
                         if add_clicked:
+                            st.session_state.customer_pause_autorefresh = False
                             existing_qty = st.session_state.user_cart.get(product_id, {}).get("quantity", 0)
                             requested_total = existing_qty + int(qty)
                             if requested_total > stock:
@@ -396,118 +467,167 @@ def _render_customer_view(linker, current_user):
                                 }
                                 st.success(f"Added {int(qty)} x {product['name']} to cart")
 
-    with cart_tab:
+    elif active_tab == "Cart":
         st.markdown("### Cart")
 
         cart_items = list(st.session_state.user_cart.values())
         if not cart_items:
             st.info("Your cart is empty")
-            return
+        else:
+            with st.expander("🛒 Open cart items", expanded=True):
+                for item in cart_items:
+                    rc1, rc2 = st.columns([5, 1])
+                    rc1.write(
+                        f"{item['name']} | qty {item['quantity']} | EUR {item['price']:.2f} each | line EUR {(item['price'] * item['quantity']):.2f}"
+                    )
+                    if rc2.button("Remove", key=f"shop_remove_{item['product_id']}", use_container_width=True):
+                        st.session_state.customer_pause_autorefresh = False
+                        del st.session_state.user_cart[item["product_id"]]
+                        st.rerun()
 
-        with st.expander("🛒 Open cart items", expanded=True):
+            if st.button("Clear cart", type="secondary", use_container_width=True):
+                st.session_state.customer_pause_autorefresh = False
+                st.session_state.user_cart = {}
+                st.rerun()
+
+            cart_rows = []
+            subtotal = 0.0
+            total_items = 0
             for item in cart_items:
-                rc1, rc2 = st.columns([5, 1])
-                rc1.write(
-                    f"{item['name']} | qty {item['quantity']} | EUR {item['price']:.2f} each | line EUR {(item['price'] * item['quantity']):.2f}"
+                line_total = item["price"] * item["quantity"]
+                subtotal += line_total
+                total_items += item["quantity"]
+                cart_rows.append(
+                    {
+                        "product_id": item["product_id"],
+                        "name": item["name"],
+                        "category": item["category"],
+                        "quantity": item["quantity"],
+                        "unit_price": item["price"],
+                        "line_total": line_total,
+                    }
                 )
-                if rc2.button("Remove", key=f"shop_remove_{item['product_id']}", use_container_width=True):
-                    del st.session_state.user_cart[item["product_id"]]
-                    st.rerun()
 
-        if st.button("Clear cart", type="secondary", use_container_width=True):
-            st.session_state.user_cart = {}
-            st.rerun()
+            _show_table(cart_rows)
+            m1, m2 = st.columns(2)
+            m1.metric("Cart items", total_items)
+            m2.metric("Subtotal", f"EUR {subtotal:.2f}")
 
-        cart_rows = []
-        subtotal = 0.0
-        total_items = 0
-        for item in cart_items:
-            line_total = item["price"] * item["quantity"]
-            subtotal += line_total
-            total_items += item["quantity"]
-            cart_rows.append(
-                {
-                    "product_id": item["product_id"],
-                    "name": item["name"],
-                    "category": item["category"],
-                    "quantity": item["quantity"],
-                    "unit_price": item["price"],
-                    "line_total": line_total,
-                }
+            permission = current_user.get("permission") or {}
+            default_customer_category = permission.get("category", "Customer")
+            customer_name = current_user.get("nickname", "")
+            try:
+                checkout_context = linker.get_customer_checkout_context(customer_name, cart_items)
+                default_customer_category = checkout_context.get("customerCategory", default_customer_category)
+                db_discount = float(checkout_context.get("discount", 0.0))
+                discount_source = checkout_context.get("discountSource", "recent_average_discount")
+                sample_size = int(checkout_context.get("sampleSize", 0))
+            except Exception as e:
+                if "token" in str(e).lower():
+                    raise
+                st.warning(f"Unable to retrieve discount from DB, using 0.0: {e}")
+                db_discount = 0.0
+                discount_source = "fallback_zero"
+                sample_size = 0
+
+            net_total = subtotal * (1 - db_discount)
+            cctx1, cctx2, cctx3 = st.columns(3)
+            cctx1.metric("Discount from DB", f"{db_discount * 100:.1f}%")
+            cctx2.metric("Category", default_customer_category)
+            cctx3.metric("Total after discount", f"EUR {net_total:.2f}")
+
+            st.caption(
+                f"Discount rule: weighted average of field 'discount' from the most recent DB transactions of the products currently in cart (sample={sample_size}, source={discount_source})."
             )
 
-        _show_table(cart_rows)
-        m1, m2 = st.columns(2)
-        m1.metric("Cart items", total_items)
-        m2.metric("Subtotal", f"EUR {subtotal:.2f}")
+            st.markdown("#### Checkout")
+            with st.form("shop_checkout_form"):
+                customer_name = st.text_input("Customer", value=customer_name, disabled=True)
+                payment_method = st.selectbox("Payment method", ["Credit Card", "Cash", "Bank Transfer"])
+                city = st.text_input("City", value="Rome")
+                st.text_input("Customer category (from DB)", value=default_customer_category, disabled=True)
+                st.number_input("Discount (from DB)", min_value=0.0, max_value=1.0, value=db_discount, disabled=True)
+                checkout = st.form_submit_button("Complete transaction", type="primary", use_container_width=True)
 
-        permission = current_user.get("permission") or {}
-        default_customer_category = permission.get("category", "Customer")
-        customer_name = current_user.get("nickname", "")
-        try:
-            checkout_context = linker.get_customer_checkout_context(customer_name, cart_items)
-            default_customer_category = checkout_context.get("customerCategory", default_customer_category)
-            db_discount = float(checkout_context.get("discount", 0.0))
-            discount_source = checkout_context.get("discountSource", "recent_average_discount")
-            sample_size = int(checkout_context.get("sampleSize", 0))
-        except Exception as e:
-            if "token" in str(e).lower():
-                raise
-            st.warning(f"Unable to retrieve discount from DB, using 0.0: {e}")
-            db_discount = 0.0
-            discount_source = "fallback_zero"
-            sample_size = 0
+                if checkout:
+                    st.session_state.customer_pause_autorefresh = False
+                    try:
+                        result = linker.process_cart_order(
+                            customer_name=customer_name,
+                            payment_method=payment_method,
+                            city=city,
+                            items=cart_items,
+                        )
+                        st.success("Transaction completed successfully")
+                        s1, s2, s3 = st.columns(3)
+                        s1.metric("Items processed", int(result.get("totalItems", 0)))
+                        s2.metric("Total paid", f"EUR {float(result.get('cartTotal', 0.0)):.2f}")
+                        s3.metric("Order lines", int(result.get("lines", 0)))
+                        if result.get("transactions"):
+                            st.markdown("#### Order summary")
+                            summary_rows = [
+                                {
+                                    "product": tx.get("product"),
+                                    "quantity": tx.get("totalItems"),
+                                    "line_total": tx.get("totalCost"),
+                                    "payment": tx.get("paymentMethod"),
+                                }
+                                for tx in result["transactions"]
+                            ]
+                            _show_table(summary_rows)
+                        st.session_state.user_cart = {}
+                    except Exception as e:
+                        if "token" in str(e).lower():
+                            raise
+                        st.error(str(e))
 
-        net_total = subtotal * (1 - db_discount)
-        cctx1, cctx2, cctx3 = st.columns(3)
-        cctx1.metric("Discount from DB", f"{db_discount * 100:.1f}%")
-        cctx2.metric("Category", default_customer_category)
-        cctx3.metric("Total after discount", f"EUR {net_total:.2f}")
+    else:  # Shopping Assistant
+        st.markdown("### Shopping Assistant")
+        st.caption("Customer-only assistant that suggests what to buy based on your cart and discount profile")
 
-        st.caption(
-            f"Discount rule: weighted average of field 'discount' from the most recent DB transactions of the products currently in cart (sample={sample_size}, source={discount_source})."
+        prompt = st.text_area(
+            "What do you want to buy today?",
+            value="Consigliami 2-3 prodotti da aggiungere al carrello con il miglior rapporto qualità/prezzo.",
+            height=110,
+            key="customer_advice_prompt",
         )
 
-        st.markdown("#### Checkout")
-        with st.form("shop_checkout_form"):
-            customer_name = st.text_input("Customer", value=customer_name, disabled=True)
-            payment_method = st.selectbox("Payment method", ["Credit Card", "Cash", "Bank Transfer"])
-            city = st.text_input("City", value="Rome")
-            st.text_input("Customer category (from DB)", value=default_customer_category, disabled=True)
-            st.number_input("Discount (from DB)", min_value=0.0, max_value=1.0, value=db_discount, disabled=True)
-            checkout = st.form_submit_button("Complete transaction", type="primary", use_container_width=True)
+        if st.button("Get suggestions", type="primary", use_container_width=True):
+            st.session_state.customer_tab_target = "Shopping Assistant"
+            st.session_state.customer_pause_autorefresh = True
+            st.session_state.customer_pending_advice = True
+            st.rerun()
 
-            if checkout:
-                try:
-                    result = linker.process_cart_order(
-                        customer_name=customer_name,
-                        payment_method=payment_method,
-                        city=city,
-                        items=cart_items,
+        if st.session_state.get("customer_pending_advice"):
+            try:
+                with st.spinner("Generating suggestions..."):
+                    advice = linker.get_customer_shopping_advice(
+                        customer_name=current_user.get("nickname", ""),
+                        prompt=prompt,
+                        items=list(st.session_state.user_cart.values()),
                     )
-                    st.success("Transaction completed successfully")
-                    s1, s2, s3 = st.columns(3)
-                    s1.metric("Items processed", int(result.get("totalItems", 0)))
-                    s2.metric("Total paid", f"EUR {float(result.get('cartTotal', 0.0)):.2f}")
-                    s3.metric("Order lines", int(result.get("lines", 0)))
-                    if result.get("transactions"):
-                        st.markdown("#### Order summary")
-                        summary_rows = [
-                            {
-                                "product": tx.get("product"),
-                                "quantity": tx.get("totalItems"),
-                                "line_total": tx.get("totalCost"),
-                                "payment": tx.get("paymentMethod"),
-                            }
-                            for tx in result["transactions"]
-                        ]
-                        _show_table(summary_rows)
-                    st.session_state.user_cart = {}
-                except Exception as e:
-                    if "token" in str(e).lower():
-                        raise
-                    st.error(str(e))
+                if not advice:
+                    st.warning("Assistant returned an empty response. Please try again.")
+                st.session_state.customer_last_advice = advice
+                st.session_state.customer_pending_advice = False
+                st.rerun()
+            except Exception as e:
+                st.session_state.customer_pending_advice = False
+                st.session_state.customer_pause_autorefresh = False
+                if "token" in str(e).lower():
+                    raise
+                st.error(str(e))
 
+        advice = st.session_state.get("customer_last_advice")
+        if not advice:
+            st.info("Ask a question and press Get suggestions to see the assistant response.")
+        if advice:
+            st.markdown("#### Assistant response")
+            st.write(advice.get("message", "No response available"))
+            source = advice.get("source")
+            if source:
+                st.caption(f"Source: {source}")
+                
 def _render_admin_view(linker, current_user):
     c1, c2 = st.columns([4, 1])
     c1.subheader(f"Admin Control Panel - {current_user.get('nickname', '')}")
@@ -880,6 +1000,14 @@ def main():
         st.session_state.auth_role = "customer"
     if "auth_token" not in st.session_state:
         st.session_state.auth_token = None
+    if "customer_last_advice" not in st.session_state:
+        st.session_state.customer_last_advice = None
+    if "customer_pause_autorefresh" not in st.session_state:
+        st.session_state.customer_pause_autorefresh = False
+    if "customer_pending_advice" not in st.session_state:
+        st.session_state.customer_pending_advice = False
+    if "customer_tab_target" not in st.session_state:
+        st.session_state.customer_tab_target = None
 
     if st.session_state.auth_user is None and not st.session_state.auth_token:
         _restore_session_from_url()

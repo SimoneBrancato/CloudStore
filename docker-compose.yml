@@ -39,10 +39,13 @@ services:
       JWT_AUDIENCE: ${JWT_AUDIENCE}
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      LLM_SERVICE_URL: ${LLM_SERVICE_URL}
     depends_on:
       mysql:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      llm-assistant:
         condition: service_healthy
     ports:
       - "127.0.0.1:9999:9999"
@@ -66,6 +69,39 @@ services:
       timeout: 5s
       retries: 5
 
+  llm-assistant:
+    build:
+      context: ./src/llm-assistant
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    environment:
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL}
+      OLLAMA_MODEL: ${OLLAMA_MODEL}
+    depends_on:
+      ollama:
+        condition: service_started
+    ports:
+      - "127.0.0.1:8000:8000"
+    networks:
+      - cloudstore-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  ollama:
+    image: ollama/ollama:0.11.4
+    ports:
+      - "127.0.0.1:11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - cloudstore-network
+    restart: unless-stopped
+
   client:
     build:
       context: ./src/client
@@ -86,6 +122,7 @@ services:
 volumes:
   mysql-data:
   redis_data:
+  ollama_data:
 
 networks:
   cloudstore-network:

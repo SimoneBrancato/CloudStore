@@ -1,6 +1,7 @@
 package com.cloudstore.server.service.facade;
 
 import com.cloudstore.server.model.dto.*;
+import com.cloudstore.server.model.domain.CheckoutContext;
 import com.cloudstore.server.model.dto.auth.AuthenticationResult;
 import com.cloudstore.server.model.dto.auth.LoginResult;
 import com.cloudstore.server.service.exception.ServiceException;
@@ -25,6 +26,7 @@ public class CloudStoreFacade {
     private final AuthService authService;                  // Service for handling authentication and authorization
     private final CartService cartService;                  // Service for managing shopping cart operations
     private final DashboardService dashboardService;        // Service for providing dashboard statistics and user profiles
+    private final ShoppingAdvisorService shoppingAdvisorService; // Service for customer shopping advice
     private final AccessControl accessControl;              // Service for role-based access control
 
     // Default constructor that initializes all services with their default implementations
@@ -37,6 +39,7 @@ public class CloudStoreFacade {
             this.authService = new AuthServiceImpl();
             this.cartService = new CartServiceImpl();
             this.dashboardService = new DashboardServiceImpl();
+            this.shoppingAdvisorService = new ShoppingAdvisorServiceImpl();
             this.accessControl = new AccessControl();
         } catch (Exception e) {
             throw new ServiceException("Unable to initialize CloudStoreFacade", e);
@@ -58,7 +61,8 @@ public class CloudStoreFacade {
     public CloudStoreFacade(PermissionService permissionService, ProductService productService,
                             UserService userService, TransactionService transactionService,
                             AuthService authService, CartService cartService,
-                            DashboardService dashboardService, AccessControl accessControl) {
+                            DashboardService dashboardService, ShoppingAdvisorService shoppingAdvisorService,
+                            AccessControl accessControl) {
         this.permissionService = permissionService;
         this.productService = productService;
         this.userService = userService;
@@ -66,7 +70,17 @@ public class CloudStoreFacade {
         this.authService = authService;
         this.cartService = cartService;
         this.dashboardService = dashboardService;
+        this.shoppingAdvisorService = shoppingAdvisorService;
         this.accessControl = accessControl;
+    }
+
+    // Convenience constructor that initializes the ShoppingAdvisorService with its default implementation
+    public CloudStoreFacade(PermissionService permissionService, ProductService productService,
+                            UserService userService, TransactionService transactionService,
+                            AuthService authService, CartService cartService,
+                            DashboardService dashboardService, AccessControl accessControl) {
+        this(permissionService, productService, userService, transactionService,
+                authService, cartService, dashboardService, new ShoppingAdvisorServiceImpl(), accessControl);
     }
 
     // RBAC
@@ -295,6 +309,24 @@ public class CloudStoreFacade {
 
     public UserProfileDTO getUserProfile(String nickname) throws ServiceException {
         return customerMethod(nickname, () -> DTOMapper.toDTO(dashboardService.getUserProfile(nickname)));
+    }
+
+    public Map<String, Object> getCustomerShoppingAdvice(String customerName, String prompt,
+                                                         Map<Integer, Integer> items) throws ServiceException {
+        Map<Integer, Integer> normalizedItems = items != null ? items : Map.of();
+        return customerMethod(customerName, () -> {
+            CheckoutContext checkoutContext = cartService.getCheckoutContext(customerName, normalizedItems);
+            List<com.cloudstore.server.model.entities.Transaction> orderHistory =
+                    transactionService.findByCustomer(customerName);
+            return shoppingAdvisorService.getAdvice(
+                    customerName,
+                    prompt,
+                    normalizedItems,
+                    productService.findAll(),
+                    checkoutContext,
+                    orderHistory
+            );
+        });
     }
 
     // UTILITIES
