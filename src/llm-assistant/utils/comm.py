@@ -7,7 +7,13 @@ from typing import Any
 from models.AdviceRequest import AdviceRequest
 from models.AdviceResponse import AdviceResponse
 
-
+""" Rank products based on cart and order history affinity, discount, and price.
+    
+    Args:
+        req (AdviceRequest): The advice request containing customer and product information.
+    Returns:
+        list[Any]: A list of ranked products from the catalog.
+"""
 def _rank_products(req: AdviceRequest) -> list[Any]:
     cart_categories = {item.category.lower() for item in req.cart_items if item.category}
     history_categories = {item.category.lower() for item in req.order_history if item.category}
@@ -23,7 +29,13 @@ def _rank_products(req: AdviceRequest) -> list[Any]:
         ),
     )
 
-
+""" Generate shopping advice based on the request, using LLM if configured, otherwise falling back to rule-based logic.
+    
+    Args:
+        req (AdviceRequest): The advice request containing customer and product information.
+    Returns:
+        AdviceResponse: The generated advice response with suggestions.
+"""
 def _build_rule_based_advice(req: AdviceRequest) -> AdviceResponse:
     ranked = _rank_products(req)
     top = ranked[:3]
@@ -51,7 +63,13 @@ def _build_rule_based_advice(req: AdviceRequest) -> AdviceResponse:
 
     return AdviceResponse(message=message, suggestions=suggestions, source="rule_based")
 
+""" Main function to build advice using LLM if configured, otherwise returns None to indicate fallback to rule-based logic.
 
+    Args:
+        req (AdviceRequest): The advice request containing customer and product information.
+    Returns:
+        AdviceResponse | None: The generated advice response from LLM, or None if LLM is not configured or fails.
+"""
 async def _build_llm_advice(req: AdviceRequest) -> AdviceResponse | None:
     model = os.getenv("OLLAMA_MODEL")
     base_url = os.getenv("OLLAMA_BASE_URL")
