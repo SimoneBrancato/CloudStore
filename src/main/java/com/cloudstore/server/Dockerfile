@@ -4,6 +4,7 @@ WORKDIR /build
 
 COPY pom.xml ./
 COPY dao ./dao
+COPY messaging ./messaging
 COPY model ./model
 COPY service ./service
 COPY utils ./utils

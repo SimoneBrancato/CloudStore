@@ -2,6 +2,7 @@ package com.cloudstore.server.service.facade;
 
 import com.cloudstore.server.model.dto.*;
 import com.cloudstore.server.model.domain.CheckoutContext;
+import com.cloudstore.server.model.domain.OrderSubmissionResult;
 import com.cloudstore.server.model.dto.auth.AuthenticationResult;
 import com.cloudstore.server.model.dto.auth.LoginResult;
 import com.cloudstore.server.service.exception.ServiceException;
@@ -28,6 +29,7 @@ public class CloudStoreFacade {
     private final DashboardService dashboardService;        // Service for providing dashboard statistics and user profiles
     private final ShoppingAdvisorService shoppingAdvisorService; // Service for customer shopping advice
     private final AccessControl accessControl;              // Service for role-based access control
+    private final OrderProcessingService orderProcessingService; // Application service for async order dispatch
 
     // Default constructor that initializes all services with their default implementations
     public CloudStoreFacade() throws ServiceException {
@@ -41,28 +43,31 @@ public class CloudStoreFacade {
             this.dashboardService = new DashboardServiceImpl();
             this.shoppingAdvisorService = new ShoppingAdvisorServiceImpl();
             this.accessControl = new AccessControl();
+            this.orderProcessingService = new OrderProcessingServiceImpl();
         } catch (Exception e) {
             throw new ServiceException("Unable to initialize CloudStoreFacade", e);
         }
     }
 
     /**
-     * Constructor for CloudStoreFacade that allows for dependency injection.
-     * This is primarily used for unit testing or when a custom configuration of services is required.
-     * @param permissionService The service for managing permissions.
-     * @param productService The service for managing products.
-     * @param userService The service for managing users.
-     * @param transactionService The service for managing transactions.
-     * @param authService The service for handling authentication.
-     * @param cartService The service for managing shopping cart operations.
-     * @param dashboardService The service for dashboard statistics.
-     * @param accessControl The service for role-based access control.
+         * Constructor for CloudStoreFacade that allows for dependency injection.
+         * This is primarily used for unit testing or when a custom configuration of services is required.
+         * @param permissionService The service for managing permissions.
+         * @param productService The service for managing products.
+         * @param userService The service for managing users.
+         * @param transactionService The service for managing transactions.
+         * @param authService The service for handling authentication.
+         * @param cartService The service for managing shopping cart operations.
+         * @param dashboardService The service for dashboard statistics.
+         * @param shoppingAdvisorService The service for customer shopping advice.
+         * @param accessControl The service for role-based access control.
+         * @param orderProcessingService The application service for async order dispatch.
     **/
     public CloudStoreFacade(PermissionService permissionService, ProductService productService,
                             UserService userService, TransactionService transactionService,
                             AuthService authService, CartService cartService,
                             DashboardService dashboardService, ShoppingAdvisorService shoppingAdvisorService,
-                            AccessControl accessControl) {
+                            AccessControl accessControl, OrderProcessingService orderProcessingService) {
         this.permissionService = permissionService;
         this.productService = productService;
         this.userService = userService;
@@ -72,15 +77,17 @@ public class CloudStoreFacade {
         this.dashboardService = dashboardService;
         this.shoppingAdvisorService = shoppingAdvisorService;
         this.accessControl = accessControl;
+        this.orderProcessingService = orderProcessingService;
     }
 
-    // Convenience constructor that initializes the ShoppingAdvisorService with its default implementation
+    // Convenience constructor that initializes ShoppingAdvisorService and OrderProcessingService with defaults
     public CloudStoreFacade(PermissionService permissionService, ProductService productService,
                             UserService userService, TransactionService transactionService,
                             AuthService authService, CartService cartService,
                             DashboardService dashboardService, AccessControl accessControl) {
         this(permissionService, productService, userService, transactionService,
-                authService, cartService, dashboardService, new ShoppingAdvisorServiceImpl(), accessControl);
+                authService, cartService, dashboardService, new ShoppingAdvisorServiceImpl(),
+                accessControl, new OrderProcessingServiceImpl());
     }
 
     // RBAC
@@ -298,13 +305,15 @@ public class CloudStoreFacade {
         return customerMethod(customerName, () -> DTOMapper.toDTO(cartService.getCheckoutContext(customerName, items)));
     }
 
-    public TransactionDTO processOrder(String customerName, TransactionDTO dto) throws ServiceException {
-        return customerMethod(customerName, () -> DTOMapper.toDTO(cartService.processSingleOrder(DTOMapper.toEntity(dto))));
+
+    public OrderSubmissionResult processOrder(String customerName, TransactionDTO dto) throws ServiceException {
+        return customerMethod(customerName, () -> orderProcessingService.submitSingleOrder(dto));
     }
 
-    public CartOrderResultDTO processCartOrder(String customerName, String paymentMethod,
-                                               String city, Map<Integer, Integer> items) throws ServiceException {
-        return customerMethod(customerName, () -> DTOMapper.toDTO(cartService.processCartOrder(customerName, paymentMethod, city, items)));
+    public OrderSubmissionResult processCartOrder(String customerName, String paymentMethod,
+                                                  String city, Map<Integer, Integer> items) throws ServiceException {
+        return customerMethod(customerName,
+                () -> orderProcessingService.submitCartOrder(customerName, paymentMethod, city, items));
     }
 
     public UserProfileDTO getUserProfile(String nickname) throws ServiceException {
