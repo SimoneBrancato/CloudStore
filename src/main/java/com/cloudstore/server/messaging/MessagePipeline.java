@@ -14,8 +14,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.concurrent.TimeoutException;
 
 /**
- * MessagePipeline handles the connection to RabbitMQ and provides
- * functionality to publish order messages to the exchange.
+    * MessagePipeline handles the connection to RabbitMQ and provides
+    * functionality to publish order messages to the exchange.
  **/
 public class MessagePipeline implements AutoCloseable {
     
@@ -24,10 +24,11 @@ public class MessagePipeline implements AutoCloseable {
     
     private final Connection connection;
 
-    /** * Constructor for MessagePipeline.
-     * Initializes the RabbitMQ connection.
-     * @throws ServiceException If initialization fails due to connection or timeout issues.
-     **/
+    /**
+        * Constructor for MessagePipeline.
+        * Initializes the RabbitMQ connection.
+        * @throws ServiceException If initialization fails due to connection or timeout issues.
+    **/
     public MessagePipeline() throws ServiceException {
         ConnectionFactory factory = new ConnectionFactory();
         String host = System.getenv("RABBITMQ_HOST");
@@ -40,17 +41,17 @@ public class MessagePipeline implements AutoCloseable {
         }
     }
 
-    /** * Publishes an order message to the RabbitMQ exchange.
-     * @param routingKey The routing key to use for the message.
-     * @param messageId The unique identifier for the message to ensure idempotency.
-     * @param payload The message payload to be sent.
-     * @throws ServiceException If publishing the message to the exchange fails.
-     **/
+    /**
+        * Publishes an order message to the RabbitMQ exchange.
+        * @param routingKey The routing key to use for the message.
+        * @param messageId The unique identifier for the message to ensure idempotency.
+        * @param payload The message payload to be sent.
+        * @throws ServiceException If publishing the message to the exchange fails.
+    **/
     public void publishOrderMessage(String routingKey, String messageId, Object payload) throws ServiceException {
         try (Channel channel = connection.createChannel()) {
             channel.exchangeDeclare(EXCHANGE_NAME, BuiltinExchangeType.DIRECT, true);
-            
-            // Enable publisher confirms
+
             channel.confirmSelect();
             
             String message = MAPPER.writeValueAsString(payload);
@@ -62,7 +63,6 @@ public class MessagePipeline implements AutoCloseable {
                     .build(), 
                 message.getBytes(StandardCharsets.UTF_8));
             
-            // Blocking wait for confirms
             channel.waitForConfirmsOrDie(5000);
             
         } catch (Exception e) {
@@ -71,9 +71,9 @@ public class MessagePipeline implements AutoCloseable {
     }
 
     /**
-     * Closes the underlying RabbitMQ connection.
-     * @throws Exception If an error occurs during connection closure.
-     **/
+         * Closes the underlying RabbitMQ connection.
+         * @throws Exception If an error occurs during connection closure.
+    **/
     @Override
     public void close() throws Exception {
         if (connection != null && connection.isOpen()) connection.close();

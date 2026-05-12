@@ -5,9 +5,6 @@ import com.cloudstore.server.model.entities.User;
 
 import java.util.List;
 
-/**
- * Domain record representing a complete user profile including order history.
-**/
 public record UserProfile(
     User user,
     List<Transaction> orderHistory,

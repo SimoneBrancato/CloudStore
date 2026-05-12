@@ -8,11 +8,8 @@ import java.util.List;
 public final class LoginResult {
 
     private final String token; // The authentication token for the logged-in user
-
     private final UserDTO user; // The user details of the logged-in user
-
     private final String role; // The highest priority role associated with the logged-in user
-
     private final boolean isAdmin; // Indicates whether the logged-in user has administrative privileges
 
     /**

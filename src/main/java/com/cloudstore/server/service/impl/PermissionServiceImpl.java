@@ -17,8 +17,8 @@ public class PermissionServiceImpl implements PermissionService {
     private final PermissionDAO permissionDAO;
 
     /** 
-     * Constructor for PermissionServiceImpl that accepts a PermissionDAO instance.
-     * @param permissionDAO The PermissionDAO instance to use for database operations.
+         * Constructor for PermissionServiceImpl that accepts a PermissionDAO instance.
+         * @param permissionDAO The PermissionDAO instance to use for database operations.
     **/
     public PermissionServiceImpl(PermissionDAO permissionDAO) {
         this.permissionDAO = permissionDAO;

@@ -60,7 +60,7 @@ public class CartServiceImpl implements CartService {
         * @param items A map of product IDs to quantities.
         * @return A map containing the checkout context.
         * @throws ServiceException If an error occurs while retrieving the checkout context.
-     */
+    **/
     @Override
     public CheckoutContext getCheckoutContext(String customerName, Map<Integer, Integer> items) throws ServiceException {
         Map<Integer, Integer> normalizedItems = normalizeItemsMap(items);

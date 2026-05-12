@@ -54,12 +54,12 @@ public class JavaFacadeWrapper {
     }
     
     /**
-     * Main method to start the HTTP server and listen for incoming requests.
-     * The server will handle requests to invoke methods on the CloudStoreFacade.
-     * It also initializes background workers and registers graceful shutdown hooks.
-     * @param args Command line arguments.
-     * @throws Exception If a critical error occurs during startup.
-     **/
+        * Main method to start the HTTP server and listen for incoming requests.
+        * The server will handle requests to invoke methods on the CloudStoreFacade.
+        * It also initializes background workers and registers graceful shutdown hooks.
+        * @param args Command line arguments.
+        * @throws Exception If a critical error occurs during startup.
+    **/
     public static void main(String[] args) throws Exception {
 
         // 1. Initialize and start background components
@@ -84,9 +84,9 @@ public class JavaFacadeWrapper {
     }
 
     /**
-     * Initializes and starts the OrderWorker in a separate daemon thread.
-     * @return The initialized OrderWorker instance.
-     **/
+        * Initializes and starts the OrderWorker in a separate daemon thread.
+        * @return The initialized OrderWorker instance.
+    **/
     private static OrderWorker startOrderWorker() {
         try {
             // Instantiate concrete implementations in the Composition Root
@@ -105,10 +105,10 @@ public class JavaFacadeWrapper {
     }
 
     /**
-     * Creates and starts the Sun HttpServer.
-     * @return The started HttpServer instance.
-     * @throws IOException If an I/O error occurs during server creation.
-     **/
+        * Creates and starts the Sun HttpServer.
+        * @return The started HttpServer instance.
+        * @throws IOException If an I/O error occurs during server creation.
+    **/
     private static HttpServer startHttpServer() throws IOException {
         HttpServer server = HttpServer.create(new InetSocketAddress(PORT), 0);
         server.createContext("/", new FacadeHandler());
@@ -119,9 +119,10 @@ public class JavaFacadeWrapper {
     
     static class FacadeHandler implements HttpHandler {
         
-        /** * Handles incoming HTTP requests.
-             * @param exchange The HttpExchange object containing request and response information.
-             * @throws IOException If an I/O error occurs while handling the request.
+        /**
+            * Handles incoming HTTP requests.
+            * @param exchange The HttpExchange object containing request and response information.
+            * @throws IOException If an I/O error occurs while handling the request.
         **/
         @Override
         public void handle(HttpExchange exchange) throws IOException {
@@ -160,11 +161,12 @@ public class JavaFacadeWrapper {
             }
         }
 
-        /** * Sends a JSON response with the specified status code and body.
-             * @param exchange The HttpExchange object to send the response through.
-             * @param statusCode The HTTP status code to set in the response.
-             * @param body The body of the response, which will be serialized to JSON.
-             * @throws IOException If an I/O error occurs while sending the response.
+        /** 
+            * Sends a JSON response with the specified status code and body.
+            * @param exchange The HttpExchange object to send the response through.
+            * @param statusCode The HTTP status code to set in the response.
+            * @param body The body of the response, which will be serialized to JSON.
+            * @throws IOException If an I/O error occurs while sending the response.
         **/
         private void sendJsonResponse(HttpExchange exchange, int statusCode, Object body) throws IOException {
             byte[] responseBytes = MAPPER.writeValueAsBytes(body);
@@ -175,10 +177,11 @@ public class JavaFacadeWrapper {
             }
         }
 
-        /** * Handles exceptions that occur during request processing and sends an appropriate JSON error response.
-             * @param exchange The HttpExchange object to send the response through.
-             * @param t The Throwable that was caught during request processing.
-             * @throws IOException If an I/O error occurs while sending the response.
+        /** 
+            * Handles exceptions that occur during request processing and sends an appropriate JSON error response.
+            * @param exchange The HttpExchange object to send the response through.
+            * @param t The Throwable that was caught during request processing.
+            * @throws IOException If an I/O error occurs while sending the response.
         **/
         private void handleException(HttpExchange exchange, Throwable t) throws IOException {
             Throwable cause = (t instanceof InvocationTargetException) ? t.getCause() : t;
@@ -204,9 +207,9 @@ public class JavaFacadeWrapper {
         
         
         /**
-             * Resolves the HTTP status code based on the given Throwable.
-             * @param t The exception.
-             * @return The HTTP status code.
+            * Resolves the HTTP status code based on the given Throwable.
+            * @param t The exception.
+            * @return The HTTP status code.
          */
         private int resolveStatusCode(Throwable t) {
             if (t instanceof ValidationException || t instanceof IllegalArgumentException) {
@@ -223,11 +226,12 @@ public class JavaFacadeWrapper {
             return 500;
         }
         
-        /** * Invokes the specified method on the CloudStoreFacade with the given arguments.
-             * @param methodName The name of the method to invoke.
-             * @param args The arguments to pass to the method.
-             * @return The result of the method invocation.
-             * @throws Exception If an error occurs while invoking the method.
+        /** 
+            * Invokes the specified method on the CloudStoreFacade with the given arguments.
+            * @param methodName The name of the method to invoke.
+            * @param args The arguments to pass to the method.
+            * @return The result of the method invocation.
+            * @throws Exception If an error occurs while invoking the method.
         **/
         private static Object invokeMethod(String methodName, Object[] args) throws Exception {
             Method[] methods = CloudStoreFacade.class.getMethods();

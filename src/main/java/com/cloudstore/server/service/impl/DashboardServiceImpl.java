@@ -30,10 +30,10 @@ public class DashboardServiceImpl implements DashboardService {
     }
 
     /** 
-     * Retrieves dashboard statistics including total products, users, transactions, permissions, monthly sales, and low stock products.
-     * @return A DashboardStats entity containing various dashboard statistics.
-     * @throws ServiceException If an error occurs while retrieving the statistics.
-    */
+         * Retrieves dashboard statistics including total products, users, transactions, permissions, monthly sales, and low stock products.
+         * @return A DashboardStats entity containing various dashboard statistics.
+         * @throws ServiceException If an error occurs while retrieving the statistics.
+    **/
     @Override
     public DashboardStats getDashboardStats() throws ServiceException {
         LocalDateTime startOfMonth = LocalDateTime.now()
@@ -54,11 +54,11 @@ public class DashboardServiceImpl implements DashboardService {
     }
 
     /** 
-     * Retrieves the user profile information including order history and total spent for a given user nickname.
-     * @param nickname The nickname of the user whose profile is to be retrieved.
-     * @return A UserProfile entity containing the user's profile information, or null if user not found.
-     * @throws ServiceException If an error occurs while retrieving the user profile.
-    */
+         * Retrieves the user profile information including order history and total spent for a given user nickname.
+         * @param nickname The nickname of the user whose profile is to be retrieved.
+         * @return A UserProfile entity containing the user's profile information, or null if user not found.
+         * @throws ServiceException If an error occurs while retrieving the user profile.
+    **/
     @Override
     public UserProfile getUserProfile(String nickname) throws ServiceException {
         Optional<User> userOpt = userService.findByNickname(nickname);
@@ -78,10 +78,10 @@ public class DashboardServiceImpl implements DashboardService {
     }
 
     /** 
-     * Retrieves seller dashboard statistics including total revenue, total orders, average order value, products sold, and low stock products.
-     * @return A SellerDashboardStats entity containing various seller dashboard statistics.
-     * @throws ServiceException If an error occurs while retrieving the statistics.
-    */
+         * Retrieves seller dashboard statistics including total revenue, total orders, average order value, products sold, and low stock products.
+         * @return A SellerDashboardStats entity containing various seller dashboard statistics.
+         * @throws ServiceException If an error occurs while retrieving the statistics.
+    **/
     @Override
     public SellerDashboardStats getSellerDashboardStats() throws ServiceException {
         LocalDateTime startOfMonth = LocalDateTime.now()
@@ -105,21 +105,21 @@ public class DashboardServiceImpl implements DashboardService {
     }
 
     /** 
-     * Retrieves a list of products associated with the seller.
-     * @return A list of Product entities for the seller.
-     * @throws ServiceException If an error occurs while retrieving the products.
-    */
+         * Retrieves a list of products associated with the seller.
+         * @return A list of Product entities for the seller.
+         * @throws ServiceException If an error occurs while retrieving the products.
+    **/
     @Override
     public List<Product> getSellerProducts() throws ServiceException {
         return productService.findAll();
     }
 
     /** 
-     * Retrieves a list of recent sales orders for the seller.
-     * @param limit The maximum number of recent sales orders to retrieve.
-     * @return A list of SalesOrderSummary entities for the seller.
-     * @throws ServiceException If an error occurs while retrieving the sales orders.
-    */
+         * Retrieves a list of recent sales orders for the seller.
+         * @param limit The maximum number of recent sales orders to retrieve.
+         * @return A list of SalesOrderSummary entities for the seller.
+         * @throws ServiceException If an error occurs while retrieving the sales orders.
+    **/
     @Override
     public List<SalesOrderSummary> getSellerSalesOrders(int limit) throws ServiceException {
         List<Transaction> transactions = transactionService.findRecentTransactions(limit);
@@ -137,11 +137,11 @@ public class DashboardServiceImpl implements DashboardService {
     }
 
     /** 
-     * Retrieves a list of top customers for the seller based on total spending.
-     * @param limit The maximum number of top customers to retrieve.
-     * @return A list of TopCustomerSummary entities for the seller.
-     * @throws ServiceException If an error occurs while retrieving the top customers.
-    */
+         * Retrieves a list of top customers for the seller based on total spending.
+         * @param limit The maximum number of top customers to retrieve.
+         * @return A list of TopCustomerSummary entities for the seller.
+         * @throws ServiceException If an error occurs while retrieving the top customers.
+    **/
     @Override
     public List<TopCustomerSummary> getSellerTopCustomers(int limit) throws ServiceException {
         return transactionService.findTopCustomers(limit);

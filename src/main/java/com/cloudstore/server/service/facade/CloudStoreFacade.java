@@ -50,18 +50,18 @@ public class CloudStoreFacade {
     }
 
     /**
-     * Constructor for CloudStoreFacade that allows for dependency injection.
-     * This is primarily used for unit testing or when a custom configuration of services is required.
-     * @param permissionService The service for managing permissions.
-     * @param productService The service for managing products.
-     * @param userService The service for managing users.
-     * @param transactionService The service for managing transactions.
-     * @param authService The service for handling authentication.
-     * @param cartService The service for managing shopping cart operations.
-     * @param dashboardService The service for dashboard statistics.
-     * @param shoppingAdvisorService The service for customer shopping advice.
-     * @param accessControl The service for role-based access control.
-     * @param orderProcessingService The application service for async order dispatch.
+         * Constructor for CloudStoreFacade that allows for dependency injection.
+         * This is primarily used for unit testing or when a custom configuration of services is required.
+         * @param permissionService The service for managing permissions.
+         * @param productService The service for managing products.
+         * @param userService The service for managing users.
+         * @param transactionService The service for managing transactions.
+         * @param authService The service for handling authentication.
+         * @param cartService The service for managing shopping cart operations.
+         * @param dashboardService The service for dashboard statistics.
+         * @param shoppingAdvisorService The service for customer shopping advice.
+         * @param accessControl The service for role-based access control.
+         * @param orderProcessingService The application service for async order dispatch.
     **/
     public CloudStoreFacade(PermissionService permissionService, ProductService productService,
                             UserService userService, TransactionService transactionService,
@@ -305,30 +305,11 @@ public class CloudStoreFacade {
         return customerMethod(customerName, () -> DTOMapper.toDTO(cartService.getCheckoutContext(customerName, items)));
     }
 
-    /**
-     * Submits a single order to the asynchronous processing pipeline.
-     * The Facade delegates entirely to the OrderProcessingService; it has no
-     * knowledge of the underlying messaging infrastructure.
-     *
-     * @param customerName the authenticated customer placing the order
-     * @param dto the transaction details
-     * @return an {@link OrderSubmissionResult} with acceptance status and message
-     */
+
     public OrderSubmissionResult processOrder(String customerName, TransactionDTO dto) throws ServiceException {
         return customerMethod(customerName, () -> orderProcessingService.submitSingleOrder(dto));
     }
 
-    /**
-     * Submits a cart order to the asynchronous processing pipeline.
-     * The Facade delegates entirely to the OrderProcessingService; it has no
-     * knowledge of the underlying messaging infrastructure.
-     *
-     * @param customerName the authenticated customer placing the order
-     * @param paymentMethod the chosen payment method
-     * @param city the delivery city
-     * @param items map of product ID → quantity
-     * @return an {@link OrderSubmissionResult} with acceptance status and message
-     */
     public OrderSubmissionResult processCartOrder(String customerName, String paymentMethod,
                                                   String city, Map<Integer, Integer> items) throws ServiceException {
         return customerMethod(customerName,

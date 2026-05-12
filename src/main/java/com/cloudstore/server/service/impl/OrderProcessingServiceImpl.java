@@ -14,16 +14,17 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Implementation of OrderProcessingService that validates order requests
- * and publishes them to the asynchronous messaging pipeline.
- **/
+     * Implementation of OrderProcessingService that validates order requests
+     * and publishes them to the asynchronous messaging pipeline.
+**/
 public class OrderProcessingServiceImpl implements OrderProcessingService {
 
     private static final Logger log = LoggerFactory.getLogger(OrderProcessingServiceImpl.class);
     private final MessagePipeline messagePipeline;
 
-    /** * Default constructor for OrderProcessingServiceImpl.
-     * Initializes the MessagePipeline and registers a shutdown hook.
+    /** 
+         * Default constructor for OrderProcessingServiceImpl.
+         * Initializes the MessagePipeline and registers a shutdown hook.
      **/
     public OrderProcessingServiceImpl() {
         try {
@@ -43,17 +44,19 @@ public class OrderProcessingServiceImpl implements OrderProcessingService {
         }));
     }
 
-    /** * Constructor for OrderProcessingServiceImpl with dependency injection.
-     * @param messagePipeline The MessagePipeline instance to use for messaging operations.
+    /** 
+         * Constructor for OrderProcessingServiceImpl with dependency injection.
+         * @param messagePipeline The MessagePipeline instance to use for messaging operations.
      **/
     public OrderProcessingServiceImpl(MessagePipeline messagePipeline) {
         this.messagePipeline = messagePipeline;
     }
 
-    /** * Submits a single order to the asynchronous pipeline.
-     * @param dto The TransactionDTO containing the details of the single order.
-     * @return An OrderSubmissionResult indicating the outcome.
-     * @throws ServiceException If the DTO is null or submission fails.
+    /** 
+         * Submits a single order to the asynchronous pipeline.
+         * @param dto The TransactionDTO containing the details of the single order.
+         * @return An OrderSubmissionResult indicating the outcome.
+         * @throws ServiceException If the DTO is null or submission fails.
      **/
     @Override
     public OrderSubmissionResult submitSingleOrder(TransactionDTO dto) throws ServiceException {
@@ -71,13 +74,14 @@ public class OrderProcessingServiceImpl implements OrderProcessingService {
         return new OrderSubmissionResult("accepted", "Order queued for processing");
     }
 
-    /** * Submits a cart order to the asynchronous pipeline.
-     * @param customerName The name of the customer placing the order.
-     * @param paymentMethod The chosen payment method.
-     * @param city The delivery city.
-     * @param items A map representing the product IDs and their respective quantities.
-     * @return An OrderSubmissionResult indicating the outcome.
-     * @throws ServiceException If parameters are invalid or submission fails.
+    /** 
+         * Submits a cart order to the asynchronous pipeline.
+         * @param customerName The name of the customer placing the order.
+         * @param paymentMethod The chosen payment method.
+         * @param city The delivery city.
+         * @param items A map representing the product IDs and their respective quantities.
+         * @return An OrderSubmissionResult indicating the outcome.
+         * @throws ServiceException If parameters are invalid or submission fails.
      **/
     @Override
     public OrderSubmissionResult submitCartOrder(String customerName, String paymentMethod,
